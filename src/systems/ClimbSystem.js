@@ -1,39 +1,34 @@
-import { LOOK } from '../config/constants.js';
+import { PLAYER_SPEED, PLAYER_WALK_SPEED } from '../config/constants.js';
 
 export class ClimbSystem {
   constructor(game) {
     this.game = game;
-    this.handCycle = 0;
-    this.handTimer = 0;
+    this.bobTimer = 0;
   }
 
   update(dt) {
     const { input, player } = this.game;
     if (!player) return;
 
-    const canClimb =
-      input.isDown('Space') &&
-      !player.hasTorch &&
-      player.look === LOOK.FRONT;
-
-    if (canClimb) {
-      // Velocidade de subida lenta (1.5 metros por segundo)
-      player.depth = Math.max(0, player.depth - 1.5 * dt);
-      player.climbing = true;
+    // Correndo para frente (W ou Seta pra Cima) e com os pés no chão
+    const isRunning = input.isDown('KeyW') || input.isDown('ArrowUp');
+    
+    if (isRunning) {
+      // Se estiver com Shift, corre mais rápido
+      const speed = input.isDown('ShiftLeft') ? PLAYER_SPEED : PLAYER_WALK_SPEED;
       
-      this.handTimer += dt;
-      if (this.handTimer > 0.6) { // Demora mais pra trocar de mão
-        this.handCycle = this.handCycle === 0 ? 1 : 0;
-        this.handTimer = 0;
-      }
+      // Diminui a posição em direção à porta (0)
+      player.depth = Math.max(0, player.depth - speed * dt);
+      
+      // Headbob para dar sensação de corrida
+      this.bobTimer += dt * speed * 2;
+      player.bobbing = Math.sin(this.bobTimer) * 10;
     } else {
-      player.climbing = false;
-      this.handTimer = 0;
+      player.bobbing = 0;
     }
 
-    player.handCycle = this.handCycle;
-
-    if (player.hasEscaped() && this.game.state.running) {
+    // Chegou na porta? Venceu!
+    if (player.depth <= 0 && this.game.state.running) {
       this.game.win?.();
     }
   }
