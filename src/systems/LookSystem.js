@@ -23,4 +23,4 @@ export class LookSystem {
       player.look = LOOK.FRONT;
     }
   }
-}
+} 
