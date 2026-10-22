@@ -444,14 +444,14 @@ window.addEventListener('keydown', event => {
   if (event.code === 'Enter' && (gameState === 'dead' || gameState === 'win')) startGame();
   if (event.code === 'Enter' && gameState === 'paused') resumeGame();
   if (gameState !== 'playing') return;
-  if (event.code === 'KeyW' || event.code === 'ArrowLeft' || event.code === 'ArrowRight') moving = true;
+  if (event.code === 'KeyW') moving = true;
   if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') sprinting = true;
   if (event.code === 'ArrowUp') lookUp = true;
   if (event.code === 'ArrowDown') lookDown = true;
 });
 
 window.addEventListener('keyup', event => {
-  if (event.code === 'KeyW' || event.code === 'ArrowLeft' || event.code === 'ArrowRight') moving = false;
+  if (event.code === 'KeyW') moving = false;
   if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') sprinting = false;
   if (event.code === 'ArrowUp') lookUp = false;
   if (event.code === 'ArrowDown') lookDown = false;
