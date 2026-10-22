@@ -1,28 +1,25 @@
-// ============================================================
-// CthulhuWell — LookSystem
-// Lê setas e decide o estado do olhar do jogador.
-//   ↑  = olhar pra cima
-//   ↓  = olhar pra baixo
-//   (nada pressionado) = olhar pra frente
-// ============================================================
-
 import { LOOK } from '../config/constants.js';
 
 export class LookSystem {
-  /** @param {import('../core/Game.js').Game} game */
   constructor(game) {
     this.game = game;
+    this.currentLook = LOOK.FRONT;
   }
 
   update() {
     const { input, player } = this.game;
     if (!player) return;
 
-    if (input.isDown('ArrowUp')) {
+    // Verifica o que está pressionado
+    const pressingUp = input.isDown('ArrowUp');
+    const pressingDown = input.isDown('ArrowDown');
+
+    if (pressingUp) {
       player.look = LOOK.UP;
-    } else if (input.isDown('ArrowDown')) {
+    } else if (pressingDown) {
       player.look = LOOK.DOWN;
     } else {
+      // Só volta pra frente se não estiver clicando nada
       player.look = LOOK.FRONT;
     }
   }
