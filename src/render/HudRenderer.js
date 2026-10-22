@@ -12,8 +12,7 @@ export class HudRenderer {
       if (el) el.textContent = txt;
     };
 
-    set('hud-depth', `PROFUNDIDADE: ${Math.floor(p.depth)}m`);
-    set('hud-torch', `TOCHA: ${p.hasTorch ? 'SIM' : 'NÃO'}`);
+    set('hud-depth', `DISTÂNCIA DA PORTA: ${Math.floor(p.depth)}m`);
     
     const lookLabel = p.look === 'up' ? 'CIMA' : p.look === 'down' ? 'BAIXO' : 'FRENTE';
     set('hud-look', `OLHAR: ${lookLabel}`);
