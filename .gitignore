@@ -1,0 +1,15 @@
+# VSCode
+.vscode/
+*.code-workspace
+
+# Sistema
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Futuro (se um dia usar build)
+node_modules/
+dist/
+
+# Logs
+*.log
