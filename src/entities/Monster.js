@@ -1,17 +1,17 @@
-import { MONSTER_BASE_SPEED, MONSTER_START_OFFSET, START_DEPTH } from '../config/constants.js';
+import { MONSTER_START_OFFSET, START_DEPTH } from '../config/constants.js';
 
 export class Monster {
   constructor() {
-    this.depth = START_DEPTH + MONSTER_START_OFFSET;
-    this.speed = MONSTER_BASE_SPEED;
-    this.active = false;
+    // Começa 150 metros abaixo de você
+    this.depth = START_DEPTH + MONSTER_START_OFFSET; 
+    this.active = true; // Sem autorização, ele já está caçando.
   }
 
   update(dt) {
     if (!this.active) return;
-    // O monstro persegue o jogador subindo. Se o jogador para, ele se aproxima.
-    if (this.depth > 0) {
-        this.depth -= this.speed * 10 * dt; 
-    }
+
+    // Se o jogador está subindo, o monstro acelera para alcançar.
+    // O terror é saber que ele é MAIS RÁPIDO que você.
+    this.depth -= 6.5 * dt; 
   }
 }
