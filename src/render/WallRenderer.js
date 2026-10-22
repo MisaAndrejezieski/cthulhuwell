@@ -9,7 +9,7 @@ export class WallRenderer {
     const h = game.canvas.height;
     const p = game.player;
 
-    // A câmera se move dependendo de onde você olha
+    // O ponto de fuga (para onde todas as linhas do túnel convergem)
     let offsetY = 0;
     if (p.look === 'up') offsetY = h * 0.3;
     if (p.look === 'down') offsetY = -h * 0.3;
@@ -17,80 +17,82 @@ export class WallRenderer {
     const cx = w / 2;
     const cy = h / 2 + offsetY;
 
-    // Fundo escuro (o abismo)
-    ctx.fillStyle = '#050505';
+    // Fundo escuro (o fim do túnel)
+    ctx.fillStyle = '#020202';
     ctx.fillRect(0, 0, w, h);
 
-    // Raio do túnel (metade da tela)
-    const R = Math.max(w, h) * 0.6;
+    // Vamos criar o scroll baseado na profundidade
+    const scroll = (p.depth * 20) % 100;
 
-    // O movimento de subida (scroll).
-    // Multiplicamos a profundidade por um fator para simular a velocidade da luz passando.
-    const scroll = (p.depth * 10) % 40; 
+    // --- DESENHANDO AS PAREDES LATERAIS E O TETO ---
+    // A ideia é criar arcos e linhas que se movem em direção ao centro.
+    // Desenhamos de trás pra frente.
+    
+    const numSections = 20;
+    for (let i = numSections; i >= 0; i--) {
+      // 't' vai de 0 (fundo do túnel) a 1 (tela inteira)
+      const t = i / numSections;
+      
+      // O tamanho do arco aumenta conforme chega perto da tela
+      const widthScale = Math.pow(t, 2); 
+      const currentW = w * widthScale;
+      const currentH = h * widthScale;
 
-    // Desenhamos os anéis do poço
-    for (let y = -R; y < h + R; y += 40) {
-      // Aplica o scroll para o anel parecer que desce
-      const ringY = y + scroll;
+      // A posição Y da seção, aplicando o scroll
+      // O scroll empurra as seções para baixo (você subindo)
+      const sectionY = cy + currentH * 0.5 + scroll * widthScale;
       
-      // Calcula a distância do anel ao centro da tela
-      const distY = Math.abs(ringY - cy);
-      
-      // Se o anel estiver fora do túnel, não desenha
-      if (distY > R * 1.5) continue;
+      // Não desenha se estiver fora da tela
+      if (sectionY < -currentH || sectionY - currentH > h) continue;
 
-      // A curvatura da parede (quanto mais perto do centro, mais apertado)
-      const curve = Math.sqrt(Math.max(0, 1 - Math.pow(distY / R, 2)));
-      
-      // O raio horizontal do anel naquela altura
-      const rx = R * curve;
-      const ry = R * 0.2 * curve; // Achatado para dar perspectiva 3D
+      // Cor da pedra
+      const intensity = Math.max(0.05, 1 - t * 0.9);
+      ctx.fillStyle = `rgba(30, 28, 25, ${intensity})`;
+      ctx.strokeStyle = `rgba(15, 12, 10, ${intensity * 2})`;
+      ctx.lineWidth = 2 + t * 5; // Linhas mais grossas perto
 
-      // A cor da pedra: mais escura nas bordas, mais clara no centro (se tiver luz)
-      const lightIntensity = Math.pow(curve, 2) * 0.8;
-      
-      ctx.strokeStyle = `rgba(60, 55, 50, ${lightIntensity})`;
-      ctx.lineWidth = 2;
-      
+      // Desenha o Teto (Abóbada)
       ctx.beginPath();
-      ctx.ellipse(cx, ringY, rx, ry, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, sectionY - currentH * 0.5, currentW / 2, currentH * 0.5, 0, Math.PI, 0);
+      ctx.fill();
       ctx.stroke();
 
-      // Desenha as pedras texturizadas nas laterais (onde a parede encosta na tela)
-      if (distY < h * 0.8) {
-        for (let i = -6; i <= 6; i++) {
-            const angle = (i / 6) * Math.PI;
-            const bx = cx + Math.cos(angle) * rx;
-            const by = ringY + Math.sin(angle) * ry;
-            
-            // Desenha blocos de pedra nas beiradas
-            ctx.fillStyle = `rgba(30, 25, 20, ${lightIntensity * 1.5})`;
-            ctx.fillRect(bx - 20, by - 10, 40, 20);
-            
-            // Linha escura entre as pedras
-            ctx.strokeStyle = `rgba(0, 0, 0, ${lightIntensity})`;
-            ctx.strokeRect(bx - 20, by - 10, 40, 20);
-        }
-      }
+      // Desenha o Chão
+      ctx.beginPath();
+      ctx.rect(cx - currentW / 2, sectionY, currentW, currentH * 0.5);
+      ctx.fill();
+      ctx.stroke();
+
+      // Linhas verticais de fuga (as divisórias das paredes)
+      ctx.beginPath();
+      // Parede esquerda
+      ctx.moveTo(cx - currentW / 2, sectionY - currentH * 0.5);
+      ctx.lineTo(cx - currentW / 2, sectionY + currentH * 0.5);
+      // Parede direita
+      ctx.moveTo(cx + currentW / 2, sectionY - currentH * 0.5);
+      ctx.lineTo(cx + currentW / 2, sectionY + currentH * 0.5);
+      ctx.stroke();
     }
 
-    // Luz do topo ou escuridão no fundo
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+    // --- ILUMINAÇÃO ---
+    // Centro do túnel (luz no fim ou escuridão)
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.5);
+    
     if (p.look === 'up') {
-      grad.addColorStop(0, 'rgba(200, 220, 255, 0.9)'); // Luz do sol
-      grad.addColorStop(0.5, 'rgba(100, 120, 150, 0.4)');
+      grad.addColorStop(0, 'rgba(200, 220, 255, 0.9)'); // Luz lá em cima
+      grad.addColorStop(0.3, 'rgba(100, 120, 150, 0.4)');
     } else if (p.look === 'down') {
-      grad.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Abismo absoluto
-      grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.8)');
+      grad.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Abismo
     } else {
-      grad.addColorStop(0, 'rgba(10, 10, 15, 0.9)'); // Frente: penumbra
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      grad.addColorStop(0, 'rgba(10, 10, 15, 0.9)'); // Penumbra
     }
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // Vinheta escura para esconder as bordas do canvas
-    const vignette = ctx.createRadialGradient(cx, cy, R*0.6, cx, cy, Math.max(w,h));
+    // Vinheta nas bordas (escuridão da visão periférica)
+    const vignette = ctx.createRadialGradient(cx, cy, Math.min(w,h)*0.3, cx, cy, Math.max(w,h)*0.8);
     vignette.addColorStop(0, 'rgba(0,0,0,0)');
     vignette.addColorStop(1, 'rgba(0,0,0,1)');
     ctx.fillStyle = vignette;
