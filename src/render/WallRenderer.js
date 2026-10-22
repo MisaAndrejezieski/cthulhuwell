@@ -9,39 +9,51 @@ export class WallRenderer {
     const h = game.canvas.height;
     const p = game.player;
 
-    // O olhar altera o centro da tela
     let offsetY = 0;
-    if (p.look === 'up') offsetY = h * 0.3;
-    if (p.look === 'down') offsetY = -h * 0.3;
+    if (p.look === 'up') offsetY = h * 0.4;
+    if (p.look === 'down') offsetY = -h * 0.4;
 
-    // Simulação de perspectiva do poço
     const cx = w / 2;
-    const topY = h * 0.1 - offsetY;
-    const botY = h * 1.2 - offsetY;
-    const topHalf = w * 0.1;
-    const botHalf = w * 0.8;
+    const centerY = h / 2 + offsetY;
 
-    // Parede de pedra (gradiente escuro)
-    const grad = ctx.createLinearGradient(0, topY, 0, botY);
-    grad.addColorStop(0, '#2a2a35');
-    grad.addColorStop(0.5, '#15151c');
-    grad.addColorStop(1, '#000000');
-    
-    ctx.fillStyle = grad;
+    // Desenha as paredes laterais com perspectiva
+    const gradL = ctx.createLinearGradient(0, 0, w/4, 0);
+    gradL.addColorStop(0, '#111');
+    gradL.addColorStop(1, '#000');
+    ctx.fillStyle = gradL;
     ctx.beginPath();
-    ctx.moveTo(cx - topHalf, topY);
-    ctx.lineTo(cx + topHalf, topY);
-    ctx.lineTo(cx + botHalf, botY);
-    ctx.lineTo(cx - botHalf, botY);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(w/2, centerY);
+    ctx.lineTo(0, h);
     ctx.fill();
 
-    // Luz do topo (se estiver olhando pra cima)
-    if (p.look === 'up') {
-      const lightGrad = ctx.createRadialGradient(cx, topY, 0, cx, topY, w * 0.5);
-      lightGrad.addColorStop(0, 'rgba(200, 220, 255, 0.6)');
-      lightGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = lightGrad;
-      ctx.fillRect(0, 0, w, h);
+    const gradR = ctx.createLinearGradient(w, 0, w*0.75, 0);
+    gradR.addColorStop(0, '#111');
+    gradR.addColorStop(1, '#000');
+    ctx.fillStyle = gradR;
+    ctx.beginPath();
+    ctx.moveTo(w, 0);
+    ctx.lineTo(w/2, centerY);
+    ctx.lineTo(w, h);
+    ctx.fill();
+
+    // Textura de pedras que se move com a profundidade
+    ctx.strokeStyle = 'rgba(40, 40, 50, 0.5)';
+    ctx.lineWidth = 2;
+    
+    // O scroll das pedras é baseado na profundidade atual
+    const scroll = (p.depth * 20) % 100;
+    
+    for (let i = -100; i < h + 100; i += 100) {
+        const y = i + scroll;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w/2, centerY + (y - h/2)*0.2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(w, y);
+        ctx.lineTo(w/2, centerY + (y - h/2)*0.2);
+        ctx.stroke();
     }
   }
 }
