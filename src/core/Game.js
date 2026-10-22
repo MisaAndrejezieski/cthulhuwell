@@ -1,39 +1,31 @@
-// ============================================================
-// CthulhuWell — Game
-// Orquestrador central: estado global + ordem de update/render.
-// Nesta etapa só existe o esqueleto. Entidades/sistemas entram
-// na Etapa 4 (marcados com TODO).
-// ============================================================
-
-import { DEBUG_MONSTER_ENABLED, START_DEPTH } from '../config/constants.js';
+import { Monster } from '../entities/Monster.js';
+import { Player } from '../entities/Player.js';
+import { Renderer } from '../render/Renderer.js';
+import { ClimbSystem } from '../systems/ClimbSystem.js';
+import { LightSystem } from '../systems/LightSystem.js';
+import { LookSystem } from '../systems/LookSystem.js';
+import { TorchSystem } from '../systems/TorchSystem.js';
+import { playRoar } from '../utils/audio.js';
 import { Input } from './Input.js';
 import { Loop } from './Loop.js';
 
 export class Game {
-  /** @param {HTMLCanvasElement} canvas */
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-
     this.input = new Input();
 
-    // ---------- Estado global ----------
-    this.state = {
-      depth: START_DEPTH,       // profundidade atual (metros)
-      running: false,
-      time: 0,                  // tempo total de jogo (s)
-      monsterEnabled: DEBUG_MONSTER_ENABLED,
-    };
+    this.state = { running: false, time: 0, won: false };
+    this.player = new Player();
+    this.torches = [];
+    this.monster = new Monster();
 
-    // ---------- Entidades (Etapa 4) ----------
-    // this.player = new Player();
-    // this.torches = [];        // tochas caídas no mundo
-    // this.monster = new Monster();
-
-    // ---------- Sistemas (Etapa 4) ----------
-    // this.climbSystem = new ClimbSystem(this);
-    // this.lookSystem  = new LookSystem(this);
-    // this.torchSystem = new TorchSystem(this);
+    this.lookSystem = new LookSystem(this);
+    this.climbSystem = new ClimbSystem(this);
+    this.torchSystem = new TorchSystem(this);
+    this.lightSystem = new LightSystem(this);
+    
+    this.renderer = new Renderer(this);
 
     this.loop = new Loop({
       update: (dt) => this.update(dt),
@@ -54,52 +46,36 @@ export class Game {
     this.loop.start();
   }
 
-  stop() {
+  win() {
+    if (this.state.won) return;
+    this.state.won = true;
     this.state.running = false;
-    this.loop.stop();
   }
 
-  /** @param {number} dt */
   update(dt) {
     if (!this.state.running) return;
-
     this.state.time += dt;
 
-    // TODO Etapa 4:
-    // this.lookSystem.update(dt);
-    // this.climbSystem.update(dt);
-    // this.torchSystem.update(dt);
-
-    // Placeholder de teste: sobe com Espaço pra ver o HUD mudar
-    if (this.input.isDown('Space')) {
-      this.state.depth = Math.max(0, this.state.depth - 25 * dt);
+    if (this.input.justPressed('KeyM')) {
+      this.monster.active = !this.monster.active;
+      if (this.monster.active) playRoar();
     }
 
-    // Limpa estado de input do frame
+    this.lookSystem.update();
+    this.climbSystem.update(dt);
+    this.torchSystem.update(dt);
+    this.monster.update(dt);
+
+    // Verifica se o monstro pegou o jogador
+    if (this.monster.active && this.monster.depth <= this.player.depth + 5) {
+      this.state.running = false;
+      console.log("VOCÊ MORREU");
+    }
+
     this.input.endFrame();
   }
 
-  /** @param {number} dt */
-  render(dt) {
-    const { ctx, canvas } = this;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // TODO Etapa 5: Renderer desenha parede, corda, tocha, monstro, HUD
-    ctx.fillStyle = '#556';
-    ctx.font = '20px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(
-      `depth: ${this.state.depth.toFixed(1)}m — time: ${this.state.time.toFixed(1)}s`,
-      canvas.width / 2,
-      canvas.height / 2
-    );
-
-    this._updateHud();
-  }
-
-  _updateHud() {
-    const depthEl = document.getElementById('hud-depth');
-    if (depthEl) depthEl.textContent = `PROFUNDIDADE: ${Math.floor(this.state.depth)}m`;
+  render() {
+    this.renderer.render();
   }
 }
