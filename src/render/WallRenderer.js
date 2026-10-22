@@ -9,94 +9,91 @@ export class WallRenderer {
     const h = game.canvas.height;
     const p = game.player;
 
-    // Fundo preto absoluto (a escuridão do fundo do poço)
-    ctx.fillStyle = '#020202';
-    ctx.fillRect(0, 0, w, h);
-
+    // A câmera se move dependendo de onde você olha
     let offsetY = 0;
-    if (p.look === 'up') offsetY = h * 0.4;    // Olha pra cima, o buraco desce
-    if (p.look === 'down') offsetY = -h * 0.4; // Olha pra baixo, o buraco sobe
+    if (p.look === 'up') offsetY = h * 0.3;
+    if (p.look === 'down') offsetY = -h * 0.3;
 
     const cx = w / 2;
     const cy = h / 2 + offsetY;
 
-    // Escala máxima do túnel (quanto maior, mais perto de nós)
-    const maxRadius = w * 0.8;
+    // Fundo escuro (o abismo)
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0, 0, w, h);
 
-    // O movimento! A profundidade puxa os tijolos para baixo.
-    // Multiplicamos por 15 para controlar a velocidade do scroll.
-    const scroll = (p.depth * 15) % 60; 
+    // Raio do túnel (metade da tela)
+    const R = Math.max(w, h) * 0.6;
 
-    // Desenhamos os anéis de trás pra frente
-    const numRings = 20;
-    
-    for (let i = 0; i < numRings; i++) {
-      // O raio aumenta exponencialmente para simular a perspectiva 3D
-      const t = i / numRings;
-      const radius = maxRadius * Math.pow(t, 1.5);
+    // O movimento de subida (scroll).
+    // Multiplicamos a profundidade por um fator para simular a velocidade da luz passando.
+    const scroll = (p.depth * 10) % 40; 
 
-      // O anel se move para baixo conforme você sobe
-      const ringY = cy + radius + scroll;
-
-      // Só desenha se estiver na tela
-      if (ringY > h + maxRadius) continue;
-
-      const numBricks = Math.floor(12 + t * 30); // Mais tijolos nos anéis maiores
+    // Desenhamos os anéis do poço
+    for (let y = -R; y < h + R; y += 40) {
+      // Aplica o scroll para o anel parecer que desce
+      const ringY = y + scroll;
       
-      // Cor baseada na profundidade (mais longe = mais escuro)
-      const darkness = Math.min(1, Math.max(0.1, t * 1.2));
+      // Calcula a distância do anel ao centro da tela
+      const distY = Math.abs(ringY - cy);
       
-      // Desenha os tijolos do anel
-      for (let j = 0; j < numBricks; j++) {
-        const angle = (j / numBricks) * Math.PI * 2;
-        
-        // Tamanho do tijolo baseado no anel
-        const brickW = (Math.PI * 2 * radius) / numBricks * 0.9;
-        const brickH = 15 + t * 20;
+      // Se o anel estiver fora do túnel, não desenha
+      if (distY > R * 1.5) continue;
 
-        const bx = cx + Math.cos(angle) * radius;
-        const by = ringY + Math.sin(angle) * radius * 0.6; // 0.6 achata a elipse (perspectiva)
+      // A curvatura da parede (quanto mais perto do centro, mais apertado)
+      const curve = Math.sqrt(Math.max(0, 1 - Math.pow(distY / R, 2)));
+      
+      // O raio horizontal do anel naquela altura
+      const rx = R * curve;
+      const ry = R * 0.2 * curve; // Achatado para dar perspectiva 3D
 
-        ctx.save();
-        ctx.translate(bx, by);
-        ctx.rotate(angle + Math.PI / 2);
+      // A cor da pedra: mais escura nas bordas, mais clara no centro (se tiver luz)
+      const lightIntensity = Math.pow(curve, 2) * 0.8;
+      
+      ctx.strokeStyle = `rgba(60, 55, 50, ${lightIntensity})`;
+      ctx.lineWidth = 2;
+      
+      ctx.beginPath();
+      ctx.ellipse(cx, ringY, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
 
-        // Cor do tijolo (pedra escura)
-        const r = Math.floor(50 * darkness);
-        const g = Math.floor(45 * darkness);
-        const b = Math.floor(40 * darkness);
-        
-        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        
-        // Desenha o tijolo como um arco
-        ctx.beginPath();
-        ctx.rect(-brickW / 2, -brickH / 2, brickW, brickH);
-        ctx.fill();
-
-        // Contorno para dar textura
-        ctx.strokeStyle = `rgba(10, 10, 10, ${darkness})`;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        ctx.restore();
+      // Desenha as pedras texturizadas nas laterais (onde a parede encosta na tela)
+      if (distY < h * 0.8) {
+        for (let i = -6; i <= 6; i++) {
+            const angle = (i / 6) * Math.PI;
+            const bx = cx + Math.cos(angle) * rx;
+            const by = ringY + Math.sin(angle) * ry;
+            
+            // Desenha blocos de pedra nas beiradas
+            ctx.fillStyle = `rgba(30, 25, 20, ${lightIntensity * 1.5})`;
+            ctx.fillRect(bx - 20, by - 10, 40, 20);
+            
+            // Linha escura entre as pedras
+            ctx.strokeStyle = `rgba(0, 0, 0, ${lightIntensity})`;
+            ctx.strokeRect(bx - 20, by - 10, 40, 20);
+        }
       }
     }
 
-    // No centro do túnel, a escuridão ou a luz
+    // Luz do topo ou escuridão no fundo
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
     if (p.look === 'up') {
-      // Luz do topo
-      const topLight = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxRadius * 0.5);
-      topLight.addColorStop(0, 'rgba(180, 200, 220, 0.8)');
-      topLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = topLight;
-      ctx.fillRect(0, 0, w, h);
+      grad.addColorStop(0, 'rgba(200, 220, 255, 0.9)'); // Luz do sol
+      grad.addColorStop(0.5, 'rgba(100, 120, 150, 0.4)');
+    } else if (p.look === 'down') {
+      grad.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Abismo absoluto
+      grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.8)');
     } else {
-      // Escuridão no centro (fundo do poço)
-      const abyss = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxRadius * 0.6);
-      abyss.addColorStop(0, 'rgba(0, 0, 0, 1)');
-      abyss.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = abyss;
-      ctx.fillRect(0, 0, w, h);
+      grad.addColorStop(0, 'rgba(10, 10, 15, 0.9)'); // Frente: penumbra
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
     }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Vinheta escura para esconder as bordas do canvas
+    const vignette = ctx.createRadialGradient(cx, cy, R*0.6, cx, cy, Math.max(w,h));
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
   }
 }
