@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CthulhuWell</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: #ddd;
+      user-select: none;
+    }
+    #game {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: crosshair;
+    }
+    #hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    #hud-top, #hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      letter-spacing: 2px;
+      opacity: 0.75;
+    }
+    #hud-bottom {
+      justify-content: center;
+      gap: 20px;
+    }
+    .key {
+      border: 1px solid #555;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.5);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div id="hud-top">
+      <span id="hud-depth">PROFUNDIDADE: --m</span>
+      <span id="hud-torch">TOCHA: NÃO</span>
+      <span id="hud-look">OLHAR: FRENTE</span>
+    </div>
+    <div id="hud-bottom">
+      <span class="key">T PEGAR TOCHA</span>
+      <span class="key">L LARGAR TOCHA</span>
+      <span class="key">ESPAÇO SUBIR</span>
+      <span class="key">↑ ↓ OLHAR</span>
+      <span class="key">M MONSTRO</span>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
