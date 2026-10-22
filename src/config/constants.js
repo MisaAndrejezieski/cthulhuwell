@@ -1,24 +1,23 @@
-export const WELL_HEIGHT = 1000;
-export const START_DEPTH = 1000;
-export const SURFACE_DEPTH = 0;
+// ============================================================
+// CthulhuWell — Constantes do Corredor (Nova Versão)
+// ============================================================
 
-// Jogador sobe a 5 m/s. O monstro sobe a 6.5 m/s. Se você parar, morre.
-export const CLIMB_SPEED = 5.0; 
-export const CLIMB_BOOST_MULT = 1.0;
+// Dimensões do corredor
+export const TUNNEL_LENGTH = 1000; // metros até a porta
+export const START_POSITION = 1000; // você começa no fundo
 
+// Velocidades
+export const PLAYER_SPEED = 8;      // Velocidade de corrida (segurando Shift)
+export const PLAYER_WALK_SPEED = 4; // Velocidade normal
+export const MONSTER_START_OFFSET = 250; // O espectro começa 250m atrás de você
+export const MONSTER_SPEED = 7;     // O espectro é um pouco mais lento, mas implacável
+
+// Olhar
 export const LOOK = {
   UP: 'up',
   FRONT: 'front',
   DOWN: 'down',
 };
 
-export const LOOK_TRANSITION_TIME = 0.15;
-export const TORCH_LIGHT_RADIUS = 350;
-export const TORCH_FALL_GRAVITY = 40;
-export const TORCH_LIFE_AFTER_FALL = 60;
-
-export const MONSTER_START_OFFSET = 180; // Começa 180m abaixo. Você tem uns 30 segundos de folga.
-
-export const AUDIO_DRONE_FREQ = 40;
-export const AUDIO_NOISE_VOLUME = 0.03;
-export const DEBUG_MONSTER_ENABLED = true; // Deixei true caso você queira testar desativar no console
+// Iluminação
+export const PLAYER_LIGHT_RADIUS = 400;
