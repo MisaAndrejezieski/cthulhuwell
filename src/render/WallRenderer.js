@@ -16,44 +16,49 @@ export class WallRenderer {
     const cx = w / 2;
     const cy = h / 2 + offsetY;
 
-    // Fundo do poço (escuridão total)
-    ctx.fillStyle = '#050505';
+    // Fundo escuro absoluto
+    ctx.fillStyle = '#020202';
     ctx.fillRect(0, 0, w, h);
 
-    // Cilindro de tijolos
     const radius = w * 0.45;
     
-    // A iluminação vem do centro. O scroll é baseado na profundidade.
-    const scroll = (p.depth * 30) % 60; 
+    // AQUI ESTÁ A MÁGICA DO MOVIMENTO:
+    // Multiplicamos a profundidade por 40 (pixels por metro) e tiramos o módulo.
+    // Quando o player.depth diminui, o scroll aumenta, empurrando os tijolos para baixo.
+    const scroll = (p.depth * 40) % 40; 
+    
     const startY = -100;
     const endY = h + 100;
 
-    ctx.strokeStyle = '#1a1513';
-    ctx.lineWidth = 2;
+    // Tamanho do tijolo
+    const brickW = 80;
+    const brickH = 40;
 
-    for (let y = startY; y < endY; y += 30) {
+    for (let y = startY; y < endY; y += brickH) {
       const rowY = y + scroll;
       
-      // Calcula a perspectiva (quanto mais longe do centro, menor a curva)
-      for (let x = 0; x < w; x += 60) {
-        // Desenha blocos de tijolos curvados
+      // Desenha os tijolos
+      for (let x = 0; x < w; x += brickW) {
         const distFromCenter = Math.abs(x - cx);
-        if (distFromCenter > radius) continue; // Só desenha dentro do círculo
+        if (distFromCenter > radius) continue;
 
-        // Curvatura para dar efeito 3D
-        const curve = Math.sqrt(Math.max(0, 1 - Math.pow(distFromCenter / radius, 2))) * 40;
+        // Curvatura para dar efeito 3D de tubo
+        const curve = Math.sqrt(Math.max(0, 1 - Math.pow(distFromCenter / radius, 2))) * 60;
         const by = rowY - curve;
 
-        ctx.fillStyle = `rgba(30, 25, 20, ${0.5 + (distFromCenter/radius)*0.5})`;
-        ctx.fillRect(x, by, 55, 25);
-        
-        // Linha escura entre tijolos
-        ctx.strokeRect(x, by, 55, 25);
+        // Cor do tijolo baseada na distância do centro (mais escuro nas bordas)
+        const darkness = 1 - (distFromCenter / radius);
+        const r = Math.floor(40 * darkness);
+        const g = Math.floor(30 * darkness);
+        const b = Math.floor(25 * darkness);
+
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(x, by, brickW - 2, brickH - 2);
       }
     }
 
-    // Escuridão nas bordas para simular a falta de visão
-    const grad = ctx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, radius);
+    // Vinheta de profundidade (faz o centro parecer mais iluminado)
+    const grad = ctx.createRadialGradient(cx, cy, radius * 0.1, cx, cy, radius * 1.2);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
     grad.addColorStop(1, 'rgba(0,0,0,0.95)');
     ctx.fillStyle = grad;
