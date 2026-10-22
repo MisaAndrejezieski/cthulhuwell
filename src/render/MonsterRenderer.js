@@ -14,110 +14,99 @@ export class MonsterRenderer {
 
     const relativeDepth = m.depth - p.depth;
     
-    // O MONSTRO SÓ APARECE SE VOCÊ OLHAR PRA FRENTE!
+    // O espectro só é visto se você olhar para frente
     if (p.look !== 'front') return;
     
-    // Se estiver muito longe no fundo do túnel, não dá pra ver
-    if (relativeDepth > 200) return;
+    // Se ele estiver muito longe, não vemos
+    if (relativeDepth > 250) return;
+    // Se ele já passou de você, a tela de morte assume
     if (relativeDepth < -10) return;
 
-    // O quão perto ele está (0 a 1)
-    const prox = Math.max(0, 1 - (relativeDepth / 200));
+    // Proximidade (0 = longe, 1 = te pegando)
+    const prox = Math.max(0, 1 - (relativeDepth / 250));
     
-    // O ponto de fuga do túnel
     const cx = w / 2;
     const cy = h / 2;
 
-    // O monstro sai do ponto de fuga e cresce
-    const monsterY = cy + (relativeDepth * 1.5);
+    // Ele vem do ponto de fuga do corredor
+    const monsterY = cy + (relativeDepth * 0.5);
     
-    // Escala: começa pequeno (longe) e fica gigante (perto)
-    const scale = 0.1 + Math.pow(prox, 3) * 12; 
-    
-    // Tremor da tela (ele faz a terra tremer)
-    const shakeX = (Math.random() - 0.5) * 20 * prox;
-    const shakeY = (Math.random() - 0.5) * 20 * prox;
+    // Escala: começa pequeno (longe) e fica gigante
+    const scale = 0.2 + Math.pow(prox, 2.5) * 8; 
+
+    // Efeito de tremor para dar agonia
+    const shakeX = (Math.random() - 0.5) * 10 * prox;
+    const shakeY = (Math.random() - 0.5) * 10 * prox;
 
     ctx.save();
     ctx.translate(cx + shakeX, monsterY + shakeY);
     ctx.scale(scale, scale);
 
-    // Cor (preto absoluto no fundo)
-    const c = Math.floor(15 + prox * 10);
-    ctx.fillStyle = `rgb(${c}, ${c - 5}, ${c})`;
-
-    // --- CORPO DISFORME ---
+    // Cor: Quase preto absoluto, com uma borda ruiva/fantasmagórica
+    ctx.fillStyle = `rgba(5, 2, 2, ${Math.max(0.6, prox)})`;
+    
+    // Desenha a silhueta bizarra
     ctx.beginPath();
-    ctx.ellipse(0, 100, 180, 300, 0, 0, Math.PI * 2);
+    // Corpo fino e alongado
+    ctx.ellipse(0, 150, 60, 200, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // --- CABEÇA INCLINADA ---
+    // Cabeça
     ctx.beginPath();
-    ctx.ellipse(0, -150, 100, 120, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(0, -50, 50, 70, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // --- TENTÁCULOS PENDURADOS ---
-    const t = game.state.time * 2;
-    ctx.strokeStyle = ctx.fillStyle;
+    // Braços (MUITO longos)
     ctx.lineCap = 'round';
+    ctx.strokeStyle = ctx.fillStyle;
     
-    for (let i = -2; i <= 2; i++) {
-      const wobble = Math.sin(t + i * 2) * 30;
-      ctx.lineWidth = 15 - Math.abs(i) * 3;
-      
-      ctx.beginPath();
-      ctx.moveTo(i * 30, -50);
-      ctx.quadraticCurveTo(i * 50 + wobble, 50, i * 60 + wobble * 1.5, 200);
-      ctx.stroke();
-    }
-
-    // --- GARRAS ---
-    ctx.lineWidth = 25;
+    // Braço esquerdo
+    ctx.lineWidth = 20;
     ctx.beginPath();
-    ctx.moveTo(-100, 50);
-    ctx.quadraticCurveTo(-250, 100 + Math.sin(t)*20, -200, 300);
+    ctx.moveTo(-50, -10);
+    ctx.quadraticCurveTo(-150, 100, -120, 350);
     ctx.stroke();
     
-    ctx.lineWidth = 8;
-    for(let i=0; i<3; i++){
-        ctx.beginPath();
-        ctx.moveTo(-200, 300);
-        ctx.lineTo(-250 - i*20, 400);
-        ctx.stroke();
-    }
-
-    ctx.lineWidth = 25;
+    // Braço direito
     ctx.beginPath();
-    ctx.moveTo(100, 50);
-    ctx.quadraticCurveTo(250, 100 + Math.cos(t)*20, 200, 300);
+    ctx.moveTo(50, -10);
+    ctx.quadraticCurveTo(150, 100, 120, 350);
     ctx.stroke();
 
-    ctx.lineWidth = 8;
-    for(let i=0; i<3; i++){
+    // Pernas (longas e finas)
+    ctx.lineWidth = 25;
+    ctx.beginPath();
+    ctx.moveTo(-30, 300);
+    ctx.lineTo(-50, 500);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(30, 300);
+    ctx.lineTo(50, 500);
+    ctx.stroke();
+
+    // Olhos Vermelhos (O único ponto de luz no monstro)
+    if (prox > 0.1) {
+        ctx.fillStyle = `rgba(255, 0, 0, ${Math.min(1, prox * 2)})`;
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 20 * prox;
+        
+        // Olhos afiados e malignos
         ctx.beginPath();
-        ctx.moveTo(200, 300);
-        ctx.lineTo(250 + i*20, 400);
-        ctx.stroke();
-    }
+        // Olho esquerdo
+        ctx.moveTo(-25, -60);
+        ctx.quadraticCurveTo(-10, -70, -10, -50);
+        ctx.quadraticCurveTo(-25, -45, -25, -60);
+        ctx.fill();
+        
+        // Olho direito
+        ctx.beginPath();
+        ctx.moveTo(25, -60);
+        ctx.quadraticCurveTo(10, -70, 10, -50);
+        ctx.quadraticCurveTo(25, -45, 25, -60);
+        ctx.fill();
 
-    // --- OLHOS ---
-    if (prox > 0.2) {
-      const eyeIntensity = Math.min(1, (prox - 0.3) * 2);
-      const glow = ctx.createRadialGradient(0, -170, 0, 0, -170, 100);
-      glow.addColorStop(0, `rgba(255, 255, 255, ${eyeIntensity})`);
-      glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(-30, -170, 50, 0, Math.PI*2);
-      ctx.arc(30, -170, 50, 0, Math.PI*2);
-      ctx.fill();
-
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(-30, -170, 5, 0, Math.PI*2);
-      ctx.arc(30, -170, 5, 0, Math.PI*2);
-      ctx.fill();
+        ctx.shadowBlur = 0;
     }
 
     ctx.restore();
