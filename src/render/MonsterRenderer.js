@@ -14,117 +14,97 @@ export class MonsterRenderer {
 
     const relativeDepth = m.depth - p.depth;
     
-    // Só aparece se você olhar pra baixo
+    // O monstro SÓ pode ser visto se você olhar pra baixo
     if (p.look !== 'down') return;
+    if (relativeDepth > 300) return; // Longe demais, invisível na escuridão
+    if (relativeDepth < -10) return; // Já te passou
 
-    // Se estiver longe demais, não vê
-    if (relativeDepth > 250) return;
-
-    // Proximidade: 0 (longe) a 1 (te pegando)
-    const prox = Math.max(0, 1 - (relativeDepth / 250));
+    // O quão perto ele está (0 a 1)
+    const prox = Math.max(0, 1 - (relativeDepth / 300));
     
-    // Posição no centro do túnel, subindo de baixo
-    const offsetY = -h * 0.4; // O mesmo offset do WallRenderer para alinhar
+    // Ele sai do centro da tela (onde é o fundo do poço quando você olha pra baixo)
+    // O mesmo offsetY do WallRenderer
+    const offsetY = -h * 0.3; 
+    const cx = w / 2;
     const cy = h / 2 + offsetY;
 
-    // A criatura sai do centro escuro do túnel
-    const monsterY = cy + (relativeDepth * 4) + (prox * 100);
-    if (monsterY > h + 500) return;
+    // A criatura sobe do centro
+    const monsterY = cy + (relativeDepth * 2);
 
-    // Tamanho gigantesco
-    const scale = 0.2 + Math.pow(prox, 3) * 8;
-
-    // Efeito de tremor
-    const shakeX = (Math.random() - 0.5) * 25 * prox;
-    const shakeY = (Math.random() - 0.5) * 25 * prox;
+    // O tamanho aumenta exponencialmente (ele engole a tela)
+    const scale = 0.1 + Math.pow(prox, 3) * 12; 
+    const shakeX = (Math.random() - 0.5) * 30 * prox;
+    const shakeY = (Math.random() - 0.5) * 30 * prox;
 
     ctx.save();
-    ctx.translate(w / 2 + shakeX, monsterY + shakeY);
+    ctx.translate(cx + shakeX, monsterY + shakeY);
     ctx.scale(scale, scale);
 
-    // A cor é quase preto absoluto, mas com um leve tom arroxeado
-    const c = Math.floor(15 + prox * 20); // Fica mais nítido quando perto
-    ctx.fillStyle = `rgb(${c}, ${c - 5}, ${c})`;
+    // Se ele estiver muito perto, a tela fica vermelha/preta
+    const intensity = Math.min(1, prox * 1.5);
+    ctx.fillStyle = `rgba(5, 2, 2, ${intensity})`;
 
-    // --- CORPO DISFORME ---
+    // --- CORPO E CABEÇA (Silhueta amorfa) ---
     ctx.beginPath();
-    ctx.ellipse(0, 100, 180, 300, 0, 0, Math.PI * 2);
+    // Cabeça grande
+    ctx.ellipse(0, 0, 150, 200, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Corpo
+    ctx.beginPath();
+    ctx.moveTo(-150, 50);
+    ctx.quadraticCurveTo(-250, 300, -100, 600);
+    ctx.lineTo(100, 600);
+    ctx.quadraticCurveTo(250, 300, 150, 50);
     ctx.fill();
 
-    // --- CABEÇA INCLINADA (como na referência 6) ---
-    ctx.beginPath();
-    ctx.ellipse(0, -150, 100, 120, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // --- TENTÁCULOS PENDURADOS ---
-    const t = game.state.time * 2;
+    // --- TENTÁCULOS ---
     ctx.strokeStyle = ctx.fillStyle;
     ctx.lineCap = 'round';
-    
-    for (let i = -2; i <= 2; i++) {
-      const wobble = Math.sin(t + i * 2) * 30;
-      ctx.lineWidth = 15 - Math.abs(i) * 3; // Mais grossos no centro
-      
-      ctx.beginPath();
-      ctx.moveTo(i * 30, -50);
-      // Curva caótica descendo
-      ctx.quadraticCurveTo(i * 50 + wobble, 50, i * 60 + wobble * 1.5, 200);
-      ctx.stroke();
-    }
+    const time = game.state.time * 2;
 
-    // --- GARRAS ---
-    // Braço esquerdo
-    ctx.lineWidth = 25;
-    ctx.beginPath();
-    ctx.moveTo(-100, 50);
-    ctx.quadraticCurveTo(-250, 100 + Math.sin(t)*20, -200, 300);
-    ctx.stroke();
-    
-    // Dedos/Garras
-    ctx.lineWidth = 8;
-    for(let i=0; i<3; i++){
+    for (let i = 0; i < 6; i++) {
+        ctx.lineWidth = 20 - i * 2;
         ctx.beginPath();
-        ctx.moveTo(-200, 300);
-        ctx.lineTo(-250 - i*20, 400);
+        const startX = -100 + (i * 40);
+        // Tentáculos caóticos e longos
+        ctx.moveTo(startX, 50);
+        ctx.bezierCurveTo(
+            startX + Math.sin(time + i)*50, 200, 
+            startX + Math.cos(time + i)*80, 400, 
+            startX + Math.sin(time * 2 + i)*60, 700
+        );
         ctx.stroke();
     }
+
+    // --- BRAÇOS ---
+    // Braço esquerdo
+    ctx.lineWidth = 40;
+    ctx.beginPath();
+    ctx.moveTo(-100, 150);
+    ctx.quadraticCurveTo(-300, 200, -200, 400);
+    ctx.stroke();
 
     // Braço direito
-    ctx.lineWidth = 25;
     ctx.beginPath();
-    ctx.moveTo(100, 50);
-    ctx.quadraticCurveTo(250, 100 + Math.cos(t)*20, 200, 300);
+    ctx.moveTo(100, 150);
+    ctx.quadraticCurveTo(300, 200, 200, 400);
     ctx.stroke();
 
-    // Dedos/Garras
-    ctx.lineWidth = 8;
-    for(let i=0; i<3; i++){
+    // --- OLHOS ---
+    if (prox > 0.2) {
+        // Dois pontos brilhantes no escuro absoluto
+        ctx.fillStyle = `rgba(255, 30, 0, ${prox})`;
+        ctx.shadowColor = 'red';
+        ctx.shadowBlur = 40 * prox;
+        
         ctx.beginPath();
-        ctx.moveTo(200, 300);
-        ctx.lineTo(250 + i*20, 400);
-        ctx.stroke();
-    }
-
-    // --- OLHOS (Só dois pontos brilhantes no escuro) ---
-    // O contraste é o que dá o susto
-    if (prox > 0.3) {
-      const eyeIntensity = Math.min(1, (prox - 0.3) * 2);
-      const glow = ctx.createRadialGradient(0, -170, 0, 0, -170, 100);
-      glow.addColorStop(0, `rgba(255, 255, 255, ${eyeIntensity})`);
-      glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(-30, -170, 50, 0, Math.PI*2);
-      ctx.arc(30, -170, 50, 0, Math.PI*2);
-      ctx.fill();
-
-      // As pupilas em si
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(-30, -170, 5, 0, Math.PI*2);
-      ctx.arc(30, -170, 5, 0, Math.PI*2);
-      ctx.fill();
+        ctx.arc(-40, -50, 10, 0, Math.PI*2);
+        ctx.arc(40, -50, 10, 0, Math.PI*2);
+        ctx.fill();
+        
+        // Reseta a sombra para não afetar o resto
+        ctx.shadowBlur = 0;
     }
 
     ctx.restore();
