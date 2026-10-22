@@ -12,38 +12,59 @@ export class MonsterRenderer {
     const h = game.canvas.height;
     const p = game.player;
 
+    // Se o monstro estiver acima do jogador (já passou), não desenha embaixo
     const relativeDepth = m.depth - p.depth;
-    if (relativeDepth < 0) return;
-
-    // Só desenha se a luz permitir (perto da tocha caída ou muito perto do jogador)
-    let intensity = game.lightSystem.getLightAtDepth(m.depth);
-    if (relativeDepth < 100) intensity = 1; // Se estiver colado, você vê a silhueta
-
-    if (intensity < 0.1) return;
-
-    let screenY = h/2;
+    
+    let screenY = h / 2;
+    // Se olhar pra frente, o monstro não é visto
+    if (p.look === 'front') return; 
+    
+    // Se olhar pra baixo, a profundidade empurra ele pra baixo na tela
     if (p.look === 'down') {
-      screenY += relativeDepth * 1.5;
-    } else if (p.look === 'front') {
-       return; // Monstro não é visto de frente
-    } else {
-      return; // Nem de cima
+      screenY = h / 2 + (relativeDepth * 2);
+    } 
+    // Se olhar pra cima, ele pode aparecer no fundo da tela
+    else if (p.look === 'up') {
+      screenY = h + (relativeDepth * 2); 
     }
 
-    if (screenY > h) return;
+    // Só desenha se estiver na tela
+    if (screenY > h + 500 || screenY < -500) return;
 
-    const size = Math.max(50, 300 - relativeDepth*0.5);
+    // Calcula a luz
+    let intensity = game.lightSystem.getLightAtDepth(m.depth);
+    // Se estiver muito perto, você vê a silhueta mesmo sem luz
+    if (relativeDepth < 150) intensity = Math.max(intensity, 0.5);
+    if (intensity < 0.05) return;
 
+    // O tamanho aumenta conforme ele chega perto
+    const scale = Math.max(0.5, 1 + (150 - Math.min(relativeDepth, 150)) / 100);
+    const size = 300 * scale;
+
+    ctx.save();
+    ctx.translate(w/2, screenY);
+    ctx.scale(scale, scale);
+
+    // Corpo disforme
     ctx.fillStyle = `rgba(10, 5, 5, ${intensity})`;
     ctx.beginPath();
-    ctx.ellipse(w/2, screenY, size, size*0.7, 0, 0, Math.PI*2);
+    // Desenha uma forma grotesca
+    ctx.ellipse(0, 0, size/2, size, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // Olhos
-    ctx.fillStyle = `rgba(255, 50, 0, ${intensity})`;
+    // Braços compridos
     ctx.beginPath();
-    ctx.arc(w/2 - size*0.2, screenY - size*0.2, size*0.1, 0, Math.PI*2);
-    ctx.arc(w/2 + size*0.2, screenY - size*0.2, size*0.1, 0, Math.PI*2);
+    ctx.ellipse(-size/3, -size/4, size/4, size/8, 0.5, 0, Math.PI*2);
+    ctx.ellipse(size/3, -size/4, size/4, size/8, -0.5, 0, Math.PI*2);
     ctx.fill();
+
+    // Olhos brilhantes
+    ctx.fillStyle = `rgba(255, 20, 0, ${intensity * 1.5})`;
+    ctx.beginPath();
+    ctx.arc(-size/6, -size/3, size/12, 0, Math.PI*2);
+    ctx.arc(size/6, -size/3, size/12, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
   }
 }
