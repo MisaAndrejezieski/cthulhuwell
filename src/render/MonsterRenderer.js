@@ -1,3 +1,7 @@
+// ============================================================
+// CthulhuWell — MonsterRenderer (O Espectro)
+// ============================================================
+
 export class MonsterRenderer {
   constructor(renderer) {
     this.renderer = renderer;
@@ -14,12 +18,11 @@ export class MonsterRenderer {
 
     const relativeDepth = m.depth - p.depth;
     
-    // O espectro só é visto se você olhar para frente
+    // Só vê se estiver olhando pra frente
     if (p.look !== 'front') return;
     
-    // Se ele estiver muito longe, não vemos
+    // Se estiver muito longe, não vemos
     if (relativeDepth > 250) return;
-    // Se ele já passou de você, a tela de morte assume
     if (relativeDepth < -10) return;
 
     // Proximidade (0 = longe, 1 = te pegando)
@@ -28,26 +31,23 @@ export class MonsterRenderer {
     const cx = w / 2;
     const cy = h / 2;
 
-    // Ele vem do ponto de fuga do corredor
+    // O monstro vem do ponto de fuga
     const monsterY = cy + (relativeDepth * 0.5);
-    
-    // Escala: começa pequeno (longe) e fica gigante
     const scale = 0.2 + Math.pow(prox, 2.5) * 8; 
 
-    // Efeito de tremor para dar agonia
-    const shakeX = (Math.random() - 0.5) * 10 * prox;
-    const shakeY = (Math.random() - 0.5) * 10 * prox;
+    // Tremor
+    const shakeX = (Math.random() - 0.5) * 15 * prox;
+    const shakeY = (Math.random() - 0.5) * 15 * prox;
 
     ctx.save();
     ctx.translate(cx + shakeX, monsterY + shakeY);
     ctx.scale(scale, scale);
 
-    // Cor: Quase preto absoluto, com uma borda ruiva/fantasmagórica
-    ctx.fillStyle = `rgba(5, 2, 2, ${Math.max(0.6, prox)})`;
+    // Corpo (Silhueta negra)
+    ctx.fillStyle = `rgba(5, 0, 0, ${Math.max(0.8, prox)})`;
     
-    // Desenha a silhueta bizarra
+    // Tronco fino e alongado
     ctx.beginPath();
-    // Corpo fino e alongado
     ctx.ellipse(0, 150, 60, 200, 0, 0, Math.PI * 2);
     ctx.fill();
 
@@ -56,7 +56,7 @@ export class MonsterRenderer {
     ctx.ellipse(0, -50, 50, 70, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Braços (MUITO longos)
+    // Braços longos (garras)
     ctx.lineCap = 'round';
     ctx.strokeStyle = ctx.fillStyle;
     
@@ -73,7 +73,7 @@ export class MonsterRenderer {
     ctx.quadraticCurveTo(150, 100, 120, 350);
     ctx.stroke();
 
-    // Pernas (longas e finas)
+    // Pernas longas
     ctx.lineWidth = 25;
     ctx.beginPath();
     ctx.moveTo(-30, 300);
@@ -85,21 +85,19 @@ export class MonsterRenderer {
     ctx.lineTo(50, 500);
     ctx.stroke();
 
-    // Olhos Vermelhos (O único ponto de luz no monstro)
+    // Olhos Vermelhos Brilhantes
     if (prox > 0.1) {
         ctx.fillStyle = `rgba(255, 0, 0, ${Math.min(1, prox * 2)})`;
         ctx.shadowColor = '#ff0000';
-        ctx.shadowBlur = 20 * prox;
+        ctx.shadowBlur = 30 * prox;
         
-        // Olhos afiados e malignos
+        // Olhos afiados
         ctx.beginPath();
-        // Olho esquerdo
         ctx.moveTo(-25, -60);
         ctx.quadraticCurveTo(-10, -70, -10, -50);
         ctx.quadraticCurveTo(-25, -45, -25, -60);
         ctx.fill();
         
-        // Olho direito
         ctx.beginPath();
         ctx.moveTo(25, -60);
         ctx.quadraticCurveTo(10, -70, 10, -50);
