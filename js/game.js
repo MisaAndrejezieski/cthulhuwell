@@ -38,6 +38,7 @@
     elapsed: 0,
     previousFrame: 0,
     footstepClock: 0,
+    monsterStepClock: 0,
     phase: 'menu',
     moving: false,
     sprinting: false,
@@ -124,6 +125,11 @@
     audio.ambience.gain.setTargetAtTime(target, audio.context.currentTime, 0.8);
   }
 
+  function setMasterVolume(level, timeConstant = 0.35) {
+    if (!audio.context || !audio.master) return;
+    audio.master.gain.setTargetAtTime(level, audio.context.currentTime, timeConstant);
+  }
+
   function playFootstep() {
     if (!audio.context || audio.context.state !== 'running') return;
     const oscillator = audio.context.createOscillator();
@@ -141,15 +147,34 @@
     oscillator.stop(now + 0.18);
   }
 
+  function playMonsterFootstep(proximity) {
+    if (!audio.context || audio.context.state !== 'running') return;
+    const oscillator = audio.context.createOscillator();
+    const gain = audio.context.createGain();
+    const now = audio.context.currentTime;
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(48, now);
+    oscillator.frequency.exponentialRampToValueAtTime(27, now + 0.2);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.018 + proximity * 0.075, now + 0.035);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+    oscillator.connect(gain);
+    gain.connect(audio.master);
+    oscillator.start(now);
+    oscillator.stop(now + 0.3);
+  }
+
   function startGame() {
     state.playerDistance = SETTINGS.corridorLength;
     state.monsterDistance = SETTINGS.corridorLength + SETTINGS.monsterStartDistance;
     state.stamina = 100;
     state.elapsed = 0;
     state.footstepClock = 0;
+    state.monsterStepClock = 0.65;
     state.phase = 'playing';
     clearControls();
     startAmbience();
+    setMasterVolume(0.32);
     updateHud();
     ui.classList.remove('hidden');
     overlay.classList.add('hidden');
@@ -158,6 +183,7 @@
   function resumeGame() {
     state.phase = 'playing';
     startAmbience();
+    setMasterVolume(0.32);
     ui.classList.remove('hidden');
     overlay.classList.add('hidden');
   }
@@ -175,6 +201,7 @@
     state.phase = escaped ? 'win' : 'dead';
     clearControls();
     ui.classList.add('hidden');
+    setMasterVolume(0.004, 0.2);
 
     if (escaped) {
       showOverlay(
@@ -235,6 +262,15 @@
     const gap = state.monsterDistance - state.playerDistance;
     updateAmbience(Math.max(0, 1 - gap / 340));
     updateHud();
+
+    if (gap < 340) {
+      state.monsterStepClock -= delta;
+      if (state.monsterStepClock <= 0) {
+        const proximity = Math.max(0, 1 - gap / 340);
+        playMonsterFootstep(proximity);
+        state.monsterStepClock = 1.45 - proximity * 0.72;
+      }
+    }
 
     if (state.playerDistance <= 0) finishGame(true);
     else if (gap <= SETTINGS.catchDistance) finishGame(false);
@@ -499,6 +535,7 @@
     if (event.code === 'Escape' && state.phase === 'playing') {
       state.phase = 'paused';
       clearControls();
+      setMasterVolume(0.07);
       ui.classList.add('hidden');
       showOverlay('PAUSA', 'Os passos continuam lá fora.', 'Quando estiver pronto, volte para o corredor. Não fique parado por muito tempo.', 'Continuar');
       return;

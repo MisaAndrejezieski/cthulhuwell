@@ -122,8 +122,7 @@ button {
 }
 
 button:hover, button:focus-visible { border-color: #b29179; background: #392b24; outline: none; }
-.result-title { margin-bottom: 18px; font-size: clamp(34px, 8vw, 66px); }
-.result-title.dead { color: #b34c3e; }
+h1.dead { color: #b34c3e; }
 
 @keyframes breathe { to { opacity: .42; } }
 

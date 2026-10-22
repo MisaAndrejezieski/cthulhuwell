@@ -35,7 +35,7 @@ O projeto é JavaScript sem módulos externos ou ferramentas de build. `SETTINGS
 - **Antecipação em vez de sustos constantes:** os passos, a mudança discreta do ambiente sonoro e o aviso breve da interface comunicam aproximação sem mostrar a criatura o tempo todo.
 - **Visibilidade limitada:** iluminação fraca, detalhes que desaparecem na distância e vinheta mantêm o corredor legível sem revelar tudo.
 - **Escolhas com custo:** caminhar conserva o fôlego; correr ganha distância, mas limita por quanto tempo o jogador pode correr.
-- **Som sem arquivos externos:** um grave ambiente e passos sintetizados são produzidos com Web Audio após uma interação do jogador.
+- **Som sem arquivos externos:** um grave ambiente, passos do jogador e batidas abafadas da criatura são produzidos com Web Audio após uma interação do jogador. O ritmo das batidas se intensifica conforme ela se aproxima.
 
 ## Notas de implementação
 
