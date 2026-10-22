@@ -159,14 +159,14 @@
 </style>
 </head>
 <body>
-<canvas id="c" aria-label="Um túnel escuro onde uma criatura persegue você"></canvas>
+<canvas id="c" aria-label="Um corredor escuro, uma porta ao longe e uma criatura humanoide perseguindo você"></canvas>
 
 <div id="ui" class="hidden" aria-live="polite">
   <div class="hud-top">
     <div>
-      <div class="eyebrow">CthulhuWell · A Descida</div>
+      <div class="eyebrow">CthulhuWell · A Fuga</div>
       <span id="dist" class="distance-value">1000 m</span>
-      <div class="label">até a saída</div>
+      <div class="label">até a porta</div>
     </div>
     <div>
       <div class="label">Sinal da criatura</div>
@@ -189,11 +189,11 @@
 
 <div id="overlay" class="overlay">
   <main class="panel">
-    <div class="eyebrow">Uma descida sem volta</div>
+    <div class="eyebrow">Corra. Não olhe para trás.</div>
     <h1 id="screen-title">CTHULHU<br>WELL</h1>
-    <p id="screen-subtitle" class="subtitle">O fundo está mais perto do que parece.</p>
-    <p id="screen-story" class="story">A saída está a mil metros. Algo acordou no escuro e está vindo atrás de você. Continue andando. Não deixe que chegue perto demais.</p>
-    <button id="start-button" type="button">Descer ao poço</button>
+    <p id="screen-subtitle" class="subtitle">A porta está no fim do corredor.</p>
+    <p id="screen-story" class="story">Uma silhueta humanoide avança atrás de você. Os braços e as pernas compridos arrastam pelo chão. Seus olhos vermelhos brilham no escuro. Corra até a porta antes que ela alcance você.</p>
+    <button id="start-button" type="button">Correr até a porta</button>
   </main>
 </div>
 
@@ -365,7 +365,7 @@ function drawMonster(cx, cy) {
   if (relativeDepth <= 0 || relativeDepth >= 360) return;
 
   const proximity = Math.max(0, 1 - relativeDepth / 360);
-  const scale = 0.16 + Math.pow(proximity, 2.2) * 7.2;
+  const scale = 0.2 + Math.pow(proximity, 1.8) * 6.4;
   const monsterY = cy + relativeDepth * 0.42;
 
   ctx.save();
@@ -373,7 +373,7 @@ function drawMonster(cx, cy) {
   ctx.scale(scale, scale);
   ctx.fillStyle = 'rgba(3, 0, 0, .96)';
   ctx.beginPath();
-  ctx.ellipse(0, 150, 60, 200, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 135, 54, 180, 0, 0, Math.PI * 2);
   ctx.ellipse(0, -50, 50, 70, 0, 0, Math.PI * 2);
   ctx.fill();
 
@@ -385,17 +385,58 @@ function drawMonster(cx, cy) {
   ctx.quadraticCurveTo(-150, 100, -120, 350);
   ctx.moveTo(45, -10);
   ctx.quadraticCurveTo(150, 100, 120, 350);
+  ctx.moveTo(-25, 270);
+  ctx.quadraticCurveTo(-55, 390, -95, 535);
+  ctx.moveTo(25, 270);
+  ctx.quadraticCurveTo(70, 405, 110, 540);
   ctx.stroke();
 
+  ctx.beginPath();
+  ctx.ellipse(-100, 540, 30, 12, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(115, 545, 32, 12, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
   if (proximity > 0.08) {
-    ctx.fillStyle = `rgba(255, 30, 15, ${proximity})`;
+    ctx.fillStyle = `rgba(255, 20, 10, ${Math.min(1, proximity * 1.4)})`;
     ctx.shadowColor = '#ff1e0f';
-    ctx.shadowBlur = 34 * proximity;
+    ctx.shadowBlur = 42 * proximity;
     ctx.beginPath();
-    ctx.arc(-25, -60, 8, 0, Math.PI * 2);
-    ctx.arc(25, -60, 8, 0, Math.PI * 2);
+    ctx.ellipse(-25, -60, 10, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(25, -60, 10, 6, 0, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
+}
+
+function drawDoor(cx, cy) {
+  const doorScale = Math.min(7, 120 / Math.max(playerPos, 18));
+  const doorWidth = 220;
+  const doorHeight = 360;
+  const doorY = cy - doorHeight * doorScale * 0.45;
+
+  ctx.save();
+  ctx.translate(cx, doorY);
+  ctx.scale(doorScale, doorScale);
+  ctx.shadowColor = 'rgba(207, 85, 48, .65)';
+  ctx.shadowBlur = 24;
+  ctx.fillStyle = '#170d0b';
+  ctx.fillRect(-doorWidth / 2, -doorHeight / 2, doorWidth, doorHeight);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#976044';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(-doorWidth / 2, -doorHeight / 2, doorWidth, doorHeight);
+  ctx.fillStyle = '#241511';
+  ctx.fillRect(-doorWidth / 2 + 13, -doorHeight / 2 + 13, doorWidth - 26, doorHeight - 26);
+  ctx.strokeStyle = 'rgba(185, 138, 112, .45)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, -doorHeight / 2 + 15);
+  ctx.lineTo(0, doorHeight / 2 - 15);
+  ctx.stroke();
+  ctx.fillStyle = '#d9a167';
+  ctx.beginPath();
+  ctx.arc(doorWidth * 0.32, 0, 7, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -408,6 +449,7 @@ function draw() {
   const cy = h / 2 + lookOffset;
 
   drawTunnel(cx, cy);
+  drawDoor(cx, cy);
   if (gameState === 'playing') drawMonster(cx, cy);
 
   const danger = gameState === 'playing' ? Math.max(0, 1 - (monsterPos - playerPos) / 230) : 0;
