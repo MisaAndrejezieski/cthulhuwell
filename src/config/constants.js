@@ -1,16 +1,15 @@
 // ============================================================
-// CthulhuWell — Constantes do Corredor (Nova Versão)
+// CthulhuWell — Constantes do Corredor
 // ============================================================
 
-// Dimensões do corredor
-export const TUNNEL_LENGTH = 1000; // metros até a porta
-export const START_POSITION = 1000; // você começa no fundo
+export const START_POSITION = 1000; // Onde você começa
+export const TUNNEL_LENGTH = 1000;  // Distância até a porta (0)
 
 // Velocidades
-export const PLAYER_SPEED = 8;      // Velocidade de corrida (segurando Shift)
-export const PLAYER_WALK_SPEED = 4; // Velocidade normal
-export const MONSTER_START_OFFSET = 250; // O espectro começa 250m atrás de você
-export const MONSTER_SPEED = 7;     // O espectro é um pouco mais lento, mas implacável
+export const PLAYER_SPEED = 8;      // Corrida rápida
+export const PLAYER_WALK_SPEED = 4; // Caminhada
+export const MONSTER_START_OFFSET = 200; // O espectro começa 200m atrás
+export const MONSTER_SPEED = 8.5;   // Ele é mais rápido que você andando, mas mais lento que você correndo
 
 // Olhar
 export const LOOK = {
@@ -19,5 +18,4 @@ export const LOOK = {
   DOWN: 'down',
 };
 
-// Iluminação
-export const PLAYER_LIGHT_RADIUS = 400;
+export const PLAYER_LIGHT_RADIUS = 500;
