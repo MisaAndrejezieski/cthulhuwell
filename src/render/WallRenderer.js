@@ -9,93 +9,105 @@ export class WallRenderer {
     const h = game.canvas.height;
     const p = game.player;
 
-    // O ponto de fuga (para onde todas as linhas do túnel convergem)
-    let offsetY = 0;
-    if (p.look === 'up') offsetY = h * 0.3;
-    if (p.look === 'down') offsetY = -h * 0.3;
-
     const cx = w / 2;
-    const cy = h / 2 + offsetY;
-
-    // Fundo escuro (o fim do túnel)
-    ctx.fillStyle = '#020202';
+    const cy = h / 2;
+    
+    // O fundo escuro no final do túnel
+    ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
 
-    // Vamos criar o scroll baseado na profundidade
-    const scroll = (p.depth * 20) % 100;
+    const vanishX = cx;
+    const vanishY = cy;
 
-    // --- DESENHANDO AS PAREDES LATERAIS E O TETO ---
-    // A ideia é criar arcos e linhas que se movem em direção ao centro.
-    // Desenhamos de trás pra frente.
+    // O scroll é a ilusão de movimento (a cada 10 metros, move os tijolos)
+    const scroll = (p.depth * 30) % 60;
+
+    // Desenhamos os túneis em fatias (do fundo para a frente)
+    const numSlices = 15;
     
-    const numSections = 20;
-    for (let i = numSections; i >= 0; i--) {
-      // 't' vai de 0 (fundo do túnel) a 1 (tela inteira)
-      const t = i / numSections;
+    for (let i = numSlices; i >= 0; i--) {
+      // 't' de 0 (fundo do túnel) a 1 (na sua cara)
+      const t = Math.pow(i / numSlices, 2.5); 
       
-      // O tamanho do arco aumenta conforme chega perto da tela
-      const widthScale = Math.pow(t, 2); 
-      const currentW = w * widthScale;
-      const currentH = h * widthScale;
-
-      // A posição Y da seção, aplicando o scroll
-      // O scroll empurra as seções para baixo (você subindo)
-      const sectionY = cy + currentH * 0.5 + scroll * widthScale;
+      // Tamanho da fatia na tela
+      const sliceW = w * t;
+      const sliceH = h * t;
       
-      // Não desenha se estiver fora da tela
-      if (sectionY < -currentH || sectionY - currentH > h) continue;
+      // Posição Y aplicando o scroll (empurra pra baixo quando você sobe)
+      const sliceY = vanishY + (sliceH * 0.5) + (scroll * t);
 
-      // Cor da pedra
-      const intensity = Math.max(0.05, 1 - t * 0.9);
-      ctx.fillStyle = `rgba(30, 28, 25, ${intensity})`;
-      ctx.strokeStyle = `rgba(15, 12, 10, ${intensity * 2})`;
-      ctx.lineWidth = 2 + t * 5; // Linhas mais grossas perto
+      // Cor dos tijolos: mais escura no fundo (luz da tocha)
+      const light = Math.min(1, 0.1 + t * 0.9);
+      ctx.fillStyle = `rgb(${Math.floor(80 * light)}, ${Math.floor(30 * light)}, ${Math.floor(20 * light)})`;
 
-      // Desenha o Teto (Abóbada)
+      // 1. Desenha a parede do fundo (o "tampão" onde o monstro está)
+      if (i === numSlices) {
+        ctx.fillStyle = '#000'; // Escuridão absoluta
+        ctx.fillRect(vanishX - sliceW/2, vanishY - sliceH/2, sliceW, sliceH);
+      }
+
+      // 2. Desenha o Chão
       ctx.beginPath();
-      ctx.ellipse(cx, sectionY - currentH * 0.5, currentW / 2, currentH * 0.5, 0, Math.PI, 0);
+      ctx.moveTo(vanishX - (w * Math.pow((i-1)/numSlices, 2.5))/2, vanishY + (h * Math.pow((i-1)/numSlices, 2.5))/2 + (scroll * Math.pow((i-1)/numSlices, 2.5)));
+      ctx.lineTo(vanishX + (w * Math.pow((i-1)/numSlices, 2.5))/2, vanishY + (h * Math.pow((i-1)/numSlices, 2.5))/2 + (scroll * Math.pow((i-1)/numSlices, 2.5)));
+      ctx.lineTo(vanishX + sliceW/2, sliceY + sliceH/2);
+      ctx.lineTo(vanishX - sliceW/2, sliceY + sliceH/2);
       ctx.fill();
+      
+      // Textura do chão (linhas horizontais)
+      ctx.strokeStyle = `rgba(0,0,0,${0.5 * light})`;
+      ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Desenha o Chão
-      ctx.beginPath();
-      ctx.rect(cx - currentW / 2, sectionY, currentW, currentH * 0.5);
-      ctx.fill();
-      ctx.stroke();
-
-      // Linhas verticais de fuga (as divisórias das paredes)
-      ctx.beginPath();
+      // 3. Desenha as Paredes Laterais (os tijolos em fuga)
+      ctx.fillStyle = `rgb(${Math.floor(120 * light)}, ${Math.floor(50 * light)}, ${Math.floor(30 * light)})`;
+      
       // Parede esquerda
-      ctx.moveTo(cx - currentW / 2, sectionY - currentH * 0.5);
-      ctx.lineTo(cx - currentW / 2, sectionY + currentH * 0.5);
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      ctx.lineTo(vanishX - sliceW/2, sliceY + sliceH/2);
+      ctx.lineTo(vanishX - sliceW/2, sliceY - sliceH/2);
+      ctx.lineTo(0, 0);
+      ctx.fill();
+      
       // Parede direita
-      ctx.moveTo(cx + currentW / 2, sectionY - currentH * 0.5);
-      ctx.lineTo(cx + currentW / 2, sectionY + currentH * 0.5);
-      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(w, h);
+      ctx.lineTo(vanishX + sliceW/2, sliceY + sliceH/2);
+      ctx.lineTo(vanishX + sliceW/2, sliceY - sliceH/2);
+      ctx.lineTo(w, 0);
+      ctx.fill();
+
+      // Desenha os tijolos nas paredes
+      ctx.strokeStyle = `rgba(0,0,0,${0.8 * light})`;
+      for (let b = 0; b < 10; b++) {
+        const brickY = (b / 10) * h;
+        ctx.beginPath();
+        ctx.moveTo(0, brickY);
+        ctx.lineTo(vanishX - sliceW/2, sliceY + (brickY - h/2) * t);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(w, brickY);
+        ctx.lineTo(vanishX + sliceW/2, sliceY + (brickY - h/2) * t);
+        ctx.stroke();
+      }
+
+      // 4. Desenha o Teto (Abóbada curva, como na sua imagem)
+      ctx.fillStyle = `rgb(${Math.floor(50 * light)}, ${Math.floor(20 * light)}, ${Math.floor(15 * light)})`;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(vanishX - sliceW/2, sliceY - sliceH/2);
+      ctx.lineTo(vanishX + sliceW/2, sliceY - sliceH/2);
+      ctx.lineTo(w, 0);
+      ctx.fill();
     }
 
-    // --- ILUMINAÇÃO ---
-    // Centro do túnel (luz no fim ou escuridão)
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.5);
-    
-    if (p.look === 'up') {
-      grad.addColorStop(0, 'rgba(200, 220, 255, 0.9)'); // Luz lá em cima
-      grad.addColorStop(0.3, 'rgba(100, 120, 150, 0.4)');
-    } else if (p.look === 'down') {
-      grad.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Abismo
-    } else {
-      grad.addColorStop(0, 'rgba(10, 10, 15, 0.9)'); // Penumbra
-    }
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    
+    // Vinheta (escuridão nas bordas para dar clima de terror)
+    const grad = ctx.createRadialGradient(cx, cy, Math.min(w,h)*0.3, cx, cy, Math.max(w,h)*0.8);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,1)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Vinheta nas bordas (escuridão da visão periférica)
-    const vignette = ctx.createRadialGradient(cx, cy, Math.min(w,h)*0.3, cx, cy, Math.max(w,h)*0.8);
-    vignette.addColorStop(0, 'rgba(0,0,0,0)');
-    vignette.addColorStop(1, 'rgba(0,0,0,1)');
-    ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, w, h);
   }
 }
