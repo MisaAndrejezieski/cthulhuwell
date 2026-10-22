@@ -14,26 +14,27 @@ export class MonsterRenderer {
 
     const relativeDepth = m.depth - p.depth;
     
-    // Se você não estiver olhando pro fundo do túnel, não vê ele
-    if (p.look !== 'down') return;
-    if (relativeDepth > 300) return;
+    // O MONSTRO SÓ APARECE SE VOCÊ OLHAR PRA FRENTE!
+    if (p.look !== 'front') return;
+    
+    // Se estiver muito longe no fundo do túnel, não dá pra ver
+    if (relativeDepth > 200) return;
     if (relativeDepth < -10) return;
 
     // O quão perto ele está (0 a 1)
-    const prox = Math.max(0, 1 - (relativeDepth / 300));
+    const prox = Math.max(0, 1 - (relativeDepth / 200));
     
-    // Ponto de fuga do túnel
-    const offsetY = -h * 0.3; 
+    // O ponto de fuga do túnel
     const cx = w / 2;
-    const cy = h / 2 + offsetY;
+    const cy = h / 2;
 
-    // A posição dele sobe do centro do túnel
-    const monsterY = cy + (relativeDepth * 3);
-
-    // Tamanho: ele começa minúsculo no fundo e vira um gigante
-    const scale = 0.1 + Math.pow(prox, 4) * 15; 
+    // O monstro sai do ponto de fuga e cresce
+    const monsterY = cy + (relativeDepth * 1.5);
     
-    // Tremor na tela quando ele chega perto
+    // Escala: começa pequeno (longe) e fica gigante (perto)
+    const scale = 0.1 + Math.pow(prox, 3) * 12; 
+    
+    // Tremor da tela (ele faz a terra tremer)
     const shakeX = (Math.random() - 0.5) * 20 * prox;
     const shakeY = (Math.random() - 0.5) * 20 * prox;
 
@@ -41,70 +42,82 @@ export class MonsterRenderer {
     ctx.translate(cx + shakeX, monsterY + shakeY);
     ctx.scale(scale, scale);
 
-    // A cor é quase preto absoluto
-    const c = Math.floor(10 + prox * 15);
-    ctx.fillStyle = `rgb(${c}, ${c - 2}, ${c})`;
+    // Cor (preto absoluto no fundo)
+    const c = Math.floor(15 + prox * 10);
+    ctx.fillStyle = `rgb(${c}, ${c - 5}, ${c})`;
 
-    // --- CORPO DISFORME E CABEÇA (Silhueta que tapa o túnel) ---
+    // --- CORPO DISFORME ---
     ctx.beginPath();
-    // Cabeça grande e caída
-    ctx.ellipse(0, 0, 200, 250, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Ombros e tronco se alastrando
-    ctx.beginPath();
-    ctx.moveTo(-150, 50);
-    ctx.quadraticCurveTo(-300, 300, -150, 600);
-    ctx.lineTo(150, 600);
-    ctx.quadraticCurveTo(300, 300, 150, 50);
+    ctx.ellipse(0, 100, 180, 300, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // --- TENTÁCULOS PENDURADOS (Cara do Cthulhu) ---
+    // --- CABEÇA INCLINADA ---
+    ctx.beginPath();
+    ctx.ellipse(0, -150, 100, 120, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // --- TENTÁCULOS PENDURADOS ---
+    const t = game.state.time * 2;
     ctx.strokeStyle = ctx.fillStyle;
     ctx.lineCap = 'round';
-    const time = game.state.time * 3;
+    
+    for (let i = -2; i <= 2; i++) {
+      const wobble = Math.sin(t + i * 2) * 30;
+      ctx.lineWidth = 15 - Math.abs(i) * 3;
+      
+      ctx.beginPath();
+      ctx.moveTo(i * 30, -50);
+      ctx.quadraticCurveTo(i * 50 + wobble, 50, i * 60 + wobble * 1.5, 200);
+      ctx.stroke();
+    }
 
-    for (let i = 0; i < 7; i++) {
-        ctx.lineWidth = 25 - i * 3;
+    // --- GARRAS ---
+    ctx.lineWidth = 25;
+    ctx.beginPath();
+    ctx.moveTo(-100, 50);
+    ctx.quadraticCurveTo(-250, 100 + Math.sin(t)*20, -200, 300);
+    ctx.stroke();
+    
+    ctx.lineWidth = 8;
+    for(let i=0; i<3; i++){
         ctx.beginPath();
-        const startX = -120 + (i * 40);
-        // Tentáculos caóticos e longos
-        ctx.moveTo(startX, 50);
-        ctx.bezierCurveTo(
-            startX + Math.sin(time + i)*60, 200, 
-            startX + Math.cos(time + i)*100, 400, 
-            startX + Math.sin(time * 2 + i)*80, 700
-        );
+        ctx.moveTo(-200, 300);
+        ctx.lineTo(-250 - i*20, 400);
         ctx.stroke();
     }
 
-    // --- BRAÇOS ---
-    // Braço esquerdo
-    ctx.lineWidth = 50;
+    ctx.lineWidth = 25;
     ctx.beginPath();
-    ctx.moveTo(-150, 150);
-    ctx.quadraticCurveTo(-350, 200, -250, 450);
+    ctx.moveTo(100, 50);
+    ctx.quadraticCurveTo(250, 100 + Math.cos(t)*20, 200, 300);
     ctx.stroke();
 
-    // Braço direito
-    ctx.beginPath();
-    ctx.moveTo(150, 150);
-    ctx.quadraticCurveTo(350, 200, 250, 450);
-    ctx.stroke();
-
-    // --- OLHOS (Brilho vermelho no escuro) ---
-    if (prox > 0.2) {
-        ctx.fillStyle = `rgba(255, 20, 0, ${prox})`;
-        // Faz os olhos brilharem na escuridão
-        ctx.shadowColor = 'red';
-        ctx.shadowBlur = 50 * prox;
-        
+    ctx.lineWidth = 8;
+    for(let i=0; i<3; i++){
         ctx.beginPath();
-        ctx.arc(-60, -50, 15, 0, Math.PI*2);
-        ctx.arc(60, -50, 15, 0, Math.PI*2);
-        ctx.fill();
-        
-        ctx.shadowBlur = 0; // Reseta a sombra
+        ctx.moveTo(200, 300);
+        ctx.lineTo(250 + i*20, 400);
+        ctx.stroke();
+    }
+
+    // --- OLHOS ---
+    if (prox > 0.2) {
+      const eyeIntensity = Math.min(1, (prox - 0.3) * 2);
+      const glow = ctx.createRadialGradient(0, -170, 0, 0, -170, 100);
+      glow.addColorStop(0, `rgba(255, 255, 255, ${eyeIntensity})`);
+      glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(-30, -170, 50, 0, Math.PI*2);
+      ctx.arc(30, -170, 50, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(-30, -170, 5, 0, Math.PI*2);
+      ctx.arc(30, -170, 5, 0, Math.PI*2);
+      ctx.fill();
     }
 
     ctx.restore();
