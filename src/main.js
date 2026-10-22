@@ -1,14 +1,14 @@
-// ============================================================
-// CthulhuWell — Entry point provisório (Etapa 3)
-// Vai ser expandido na Etapa 5 (render completo + áudio + start).
-// ============================================================
-
 import { Game } from './core/Game.js';
+import { initAudio } from './utils/audio.js';
 
 const canvas = document.getElementById('game');
 const game = new Game(canvas);
 
-// Expõe no console pra debug fácil
-window.__game = game;
+// Inicia o áudio após interação do usuário
+document.body.addEventListener('click', () => {
+    initAudio();
+    game.start();
+}, { once: true });
 
-game.start();
+// Expor para debug no console
+window.__game = game;
