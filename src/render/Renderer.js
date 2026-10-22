@@ -21,20 +21,16 @@ export class Renderer {
     const h = game.canvas.height;
     const p = game.player;
 
-    // Movimento de câmera (Headbob) quando está escalando
+    // Headbob suave
     let camX = 0;
     let camY = 0;
     if (p.climbing) {
-      camX = Math.sin(game.state.time * 15) * 10;
-      camY = Math.cos(game.state.time * 30) * 5;
+      camX = Math.sin(game.state.time * 10) * 5;
+      camY = Math.cos(game.state.time * 20) * 3;
     }
 
     ctx.save();
     ctx.translate(camX, camY);
-
-    // Fundo escuro absoluto
-    ctx.fillStyle = '#000';
-    ctx.fillRect(-20, -20, w + 40, h + 40);
 
     if (game.state.won) {
       ctx.fillStyle = '#fff';
@@ -45,7 +41,6 @@ export class Renderer {
       return;
     }
 
-    // Se o monstro pegou
     if (game.state.dead) {
       ctx.fillStyle = '#a00';
       ctx.font = '40px monospace';
@@ -55,16 +50,18 @@ export class Renderer {
       return;
     }
 
-    // Renderização em camadas (do fundo para a frente)
+    // Camadas de desenho
     this.wallRenderer.render();
     this.ropeRenderer.render();
-    this.torchRenderer.renderFallen(); // Tochas no fundo
-    this.monsterRenderer.render();     // Monstro no fundo
-    this.torchRenderer.renderHand();   // Sua mão e a luz principal
+    this.torchRenderer.renderFallen();
+    this.monsterRenderer.render();
+    
+    // Desenha a tocha na mão apenas se não estiver escalando
+    if (!p.climbing) {
+      this.torchRenderer.renderHand();
+    }
 
     ctx.restore();
-
-    // HUD não sofre headbob
     this.hudRenderer.render();
   }
 }
