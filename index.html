@@ -2,190 +2,473 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>CthulhuWell</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080606">
+<title>CthulhuWell — A Descida</title>
 <style>
-  body { margin: 0; background: #000; overflow: hidden; color: #fff; font-family: monospace; }
-  canvas { display: block; }
-  #ui { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; pointer-events: none; }
+  :root {
+    color-scheme: dark;
+    font-family: "Courier New", monospace;
+    background: #080606;
+    color: #eee6dc;
+  }
+
+  * { box-sizing: border-box; }
+
+  body { margin: 0; overflow: hidden; min-height: 100vh; }
+
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  #ui {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: clamp(18px, 4vw, 42px);
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(0, 0, 0, .72), transparent 25%, transparent 72%, rgba(0, 0, 0, .76));
+    transition: opacity .4s ease;
+  }
+
+  #ui.hidden { opacity: 0; }
+
+  .hud-top, .hud-bottom {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .eyebrow, .label {
+    color: #b98a70;
+    font-size: 11px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+  }
+
+  .distance-value {
+    display: block;
+    margin-top: 7px;
+    font-size: clamp(20px, 3vw, 30px);
+    letter-spacing: .04em;
+  }
+
+  #status {
+    color: #d5c5b7;
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-align: right;
+  }
+
+  #status.danger { color: #ff5148; animation: pulse 1s infinite alternate; }
+
+  .meter-wrap { width: min(220px, 40vw); }
+  .meter-heading { display: flex; justify-content: space-between; margin-bottom: 9px; }
+  .meter-track { height: 4px; background: rgba(255, 255, 255, .18); }
+  #stamina { width: 100%; height: 100%; background: #c49b75; transition: width .12s linear; }
+
+  .controls-hint {
+    align-self: flex-end;
+    color: rgba(238, 230, 220, .68);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-align: right;
+    line-height: 1.8;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: radial-gradient(ellipse at center, rgba(22, 13, 12, .78), rgba(0, 0, 0, .94) 72%);
+    text-align: center;
+    transition: opacity .35s ease;
+  }
+
+  .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  .panel { max-width: 560px; }
+  .panel .eyebrow { margin-bottom: 18px; }
+
+  h1 {
+    margin: 0;
+    color: #eee6dc;
+    font-size: clamp(42px, 10vw, 88px);
+    font-weight: 400;
+    letter-spacing: .12em;
+    line-height: .95;
+    text-shadow: 0 0 35px rgba(151, 46, 31, .3);
+  }
+
+  .subtitle {
+    margin: 18px 0 30px;
+    color: #c1aaa0;
+    font-size: clamp(12px, 2vw, 15px);
+    letter-spacing: .12em;
+    line-height: 1.8;
+    text-transform: uppercase;
+  }
+
+  .story {
+    max-width: 430px;
+    margin: 0 auto 28px;
+    color: #a99a91;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  button {
+    min-width: 190px;
+    padding: 15px 24px;
+    border: 1px solid #a5533e;
+    background: rgba(89, 30, 23, .38);
+    color: #f3e9dd;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    transition: background .2s ease, border-color .2s ease, transform .2s ease;
+  }
+
+  button:hover, button:focus-visible {
+    border-color: #e18a68;
+    background: rgba(130, 49, 35, .62);
+    outline: none;
+    transform: translateY(-2px);
+  }
+
+  .result-title { margin-bottom: 18px; font-size: clamp(34px, 8vw, 66px); }
+  .result-title.dead { color: #e45143; }
+
+  @keyframes pulse { to { opacity: .45; } }
+
+  @media (max-width: 520px) {
+    #ui { padding: 20px; }
+    .eyebrow, .label, #status { font-size: 9px; }
+    .controls-hint { font-size: 9px; }
+  }
 </style>
 </head>
 <body>
-<div id="ui">
-  <div id="dist">DISTÂNCIA: 1000m</div>
-  <div id="status">STATUS: SEGURO</div>
+<canvas id="c" aria-label="Um túnel escuro onde uma criatura persegue você"></canvas>
+
+<div id="ui" class="hidden" aria-live="polite">
+  <div class="hud-top">
+    <div>
+      <div class="eyebrow">CthulhuWell · A Descida</div>
+      <span id="dist" class="distance-value">1000 m</span>
+      <div class="label">até a saída</div>
+    </div>
+    <div>
+      <div class="label">Sinal da criatura</div>
+      <div id="status">DISTANTE</div>
+    </div>
+  </div>
+  <div class="hud-bottom">
+    <div class="meter-wrap">
+      <div class="meter-heading">
+        <span class="label">Fôlego</span>
+        <span id="stamina-label" class="label">100%</span>
+      </div>
+      <div class="meter-track" role="progressbar" aria-label="Fôlego" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+        <div id="stamina"></div>
+      </div>
+    </div>
+    <div class="controls-hint">W · AVANÇAR &nbsp; SHIFT · CORRER<br>↑ ↓ · OLHAR &nbsp; ESC · PAUSAR</div>
+  </div>
 </div>
-<canvas id="c"></canvas>
+
+<div id="overlay" class="overlay">
+  <main class="panel">
+    <div class="eyebrow">Uma descida sem volta</div>
+    <h1 id="screen-title">CTHULHU<br>WELL</h1>
+    <p id="screen-subtitle" class="subtitle">O fundo está mais perto do que parece.</p>
+    <p id="screen-story" class="story">A saída está a mil metros. Algo acordou no escuro e está vindo atrás de você. Continue andando. Não deixe que chegue perto demais.</p>
+    <button id="start-button" type="button">Descer ao poço</button>
+  </main>
+</div>
 
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
-let w, h;
+const ui = document.getElementById('ui');
+const overlay = document.getElementById('overlay');
+const distanceDisplay = document.getElementById('dist');
+const statusDisplay = document.getElementById('status');
+const staminaBar = document.getElementById('stamina');
+const staminaLabel = document.getElementById('stamina-label');
+const progressBar = document.querySelector('[role="progressbar"]');
+const screenTitle = document.getElementById('screen-title');
+const screenSubtitle = document.getElementById('screen-subtitle');
+const screenStory = document.getElementById('screen-story');
+const startButton = document.getElementById('start-button');
+
+let w = 0;
+let h = 0;
+let playerPos = 1000;
+let monsterPos = 1190;
+let stamina = 100;
+let lookUp = false;
+let lookDown = false;
+let moving = false;
+let sprinting = false;
+let gameState = 'menu';
+let previousTime = 0;
+let elapsedTime = 0;
 
 function resize() {
-  w = canvas.width = window.innerWidth;
-  h = canvas.height = window.innerHeight;
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  w = window.innerWidth;
+  h = window.innerHeight;
+  canvas.width = Math.floor(w * pixelRatio);
+  canvas.height = Math.floor(h * pixelRatio);
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 }
+
 window.addEventListener('resize', resize);
+window.addEventListener('blur', clearControls);
 resize();
 
-// VARIÁVEIS DO JOGO
-let playerPos = 1000;
-let monsterPos = 1150;
-let lookUp = false, lookDown = false;
-let gameState = 'playing'; // 'playing', 'dead', 'win'
+function clearControls() {
+  moving = false;
+  sprinting = false;
+  lookUp = false;
+  lookDown = false;
+}
 
-// CONTROLES
-window.addEventListener('keydown', e => {
-  if (e.code === 'ArrowUp') lookUp = true;
-  if (e.code === 'ArrowDown') lookDown = true;
-  if (e.code === 'KeyW' && gameState === 'playing') {
-    const speed = e.shiftKey ? 15 : 8;
-    playerPos -= speed; // Avança em direção à porta
-    if (playerPos < 0) { playerPos = 0; gameState = 'win'; }
-  }
-});
-window.addEventListener('keyup', e => {
-  if (e.code === 'ArrowUp') lookUp = false;
-  if (e.code === 'ArrowDown') lookDown = false;
-});
+function startGame() {
+  playerPos = 1000;
+  monsterPos = 1190;
+  stamina = 100;
+  elapsedTime = 0;
+  gameState = 'playing';
+  clearControls();
+  updateHud();
+  ui.classList.remove('hidden');
+  overlay.classList.add('hidden');
+}
 
-// LOOP PRINCIPAL
-function update() {
+function finishGame(won) {
+  gameState = won ? 'win' : 'dead';
+  clearControls();
+  ui.classList.add('hidden');
+  screenTitle.innerHTML = won ? 'VOCÊ<br>ESCAPOU' : 'ELE TE<br>ENCONTROU';
+  screenTitle.classList.toggle('dead', !won);
+  screenSubtitle.textContent = won ? 'O ar da superfície nunca pareceu tão doce.' : 'O escuro tomou conta de tudo.';
+  screenStory.textContent = won
+    ? `Você encontrou a saída em ${elapsedTime.toFixed(1).replace('.', ',')} segundos.`
+    : 'Você ouviu os passos atrás de si. Então, silêncio.';
+  startButton.textContent = 'Tentar novamente';
+  overlay.classList.remove('hidden');
+}
+
+function updateHud() {
+  const distance = Math.max(0, Math.ceil(playerPos));
+  const monsterDistance = monsterPos - playerPos;
+  distanceDisplay.textContent = `${distance} m`;
+  statusDisplay.textContent = monsterDistance < 95 ? 'ESTÁ PERTO' : monsterDistance < 260 ? 'SE APROXIMANDO' : 'DISTANTE';
+  statusDisplay.classList.toggle('danger', monsterDistance < 150);
+  staminaBar.style.width = `${stamina}%`;
+  staminaLabel.textContent = `${Math.round(stamina)}%`;
+  progressBar.setAttribute('aria-valuenow', String(Math.round(stamina)));
+}
+
+function update(delta) {
   if (gameState !== 'playing') return;
 
-  // O monstro persegue sem parar
-  monsterPos -= 4; // Velocidade do monstro
+  elapsedTime += delta;
+  const canSprint = sprinting && moving && stamina > 0;
+  const playerSpeed = canSprint ? 260 : 92;
+  const monsterSpeed = 108;
 
-  // Atualiza a interface
-  document.getElementById('dist').innerText = `DISTÂNCIA DA PORTA: ${Math.floor(playerPos)}m`;
-  const distMonster = monsterPos - playerPos;
-  document.getElementById('status').innerText = distMonster < 100 ? 'STATUS: PERIGO IMINENTE' : 'STATUS: SEGURO';
+  if (moving) {
+    playerPos = Math.max(0, playerPos - playerSpeed * delta);
+    stamina = Math.max(0, stamina - (canSprint ? 37 : -17) * delta);
+  } else {
+    stamina = Math.min(100, stamina + 12 * delta);
+  }
 
-  if (distMonster < 10) {
-    gameState = 'dead';
+  monsterPos = Math.max(0, monsterPos - monsterSpeed * delta);
+  updateHud();
+
+  if (playerPos <= 0) {
+    finishGame(true);
+  } else if (monsterPos - playerPos < 12) {
+    finishGame(false);
   }
 }
 
-// RENDERIZAÇÃO
-function draw() {
-  // Fundo preto absoluto
-  ctx.fillStyle = '#000';
+function drawTunnel(cx, cy) {
+  const scroll = (elapsedTime * 75) % 100;
+  const numSlices = 18;
+
+  ctx.fillStyle = '#020202';
   ctx.fillRect(0, 0, w, h);
 
-  if (gameState === 'dead') {
-    ctx.fillStyle = 'red';
-    ctx.font = '50px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('ELE TE PEGOU', w/2, h/2);
-    return;
-  }
-
-  if (gameState === 'win') {
-    ctx.fillStyle = 'white';
-    ctx.font = '50px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('VOCÊ SOBREVIVEU', w/2, h/2);
-    return;
-  }
-
-  let offsetY = 0;
-  if (lookUp) offsetY = h * 0.3;
-  if (lookDown) offsetY = -h * 0.3;
-
-  const cx = w / 2;
-  const cy = h / 2 + offsetY;
-
-  // --- DESENHO DO TÚNEL ---
-  const scroll = (playerPos * 40) % 100;
-  const numSlices = 15;
-
   for (let i = numSlices; i >= 0; i--) {
-    const t = Math.pow(i / numSlices, 2.5); 
+    const t = Math.pow(i / numSlices, 2.5);
+    const previousT = Math.pow(Math.max(0, i - 1) / numSlices, 2.5);
     const sliceW = w * t;
     const sliceH = h * t;
-    const sliceY = cy + (sliceH * 0.5) + (scroll * t);
-    const light = Math.min(1, 0.1 + t * 0.9);
-    
-    // Fundo
+    const sliceY = cy + sliceH / 2 + scroll * t;
+    const previousY = cy + h * previousT / 2 + scroll * previousT;
+    const light = Math.min(1, 0.08 + t * 0.92);
+
     if (i === numSlices) {
-      ctx.fillStyle = '#050505'; 
-      ctx.fillRect(cx - sliceW/2, cy - sliceH/2, sliceW, sliceH);
+      ctx.fillStyle = '#080606';
+      ctx.fillRect(cx - sliceW / 2, cy - sliceH / 2, sliceW, sliceH);
     }
 
-    // Chão
-    ctx.fillStyle = `rgb(${Math.floor(40 * light)}, ${Math.floor(15 * light)}, ${Math.floor(10 * light)})`;
+    ctx.fillStyle = `rgb(${Math.floor(34 * light)}, ${Math.floor(12 * light)}, ${Math.floor(10 * light)})`;
     ctx.beginPath();
-    ctx.moveTo(cx - (w * Math.pow((i-1)/numSlices, 2.5))/2, cy + (h * Math.pow((i-1)/numSlices, 2.5))/2 + (scroll * Math.pow((i-1)/numSlices, 2.5)));
-    ctx.lineTo(cx + (w * Math.pow((i-1)/numSlices, 2.5))/2, cy + (h * Math.pow((i-1)/numSlices, 2.5))/2 + (scroll * Math.pow((i-1)/numSlices, 2.5)));
-    ctx.lineTo(cx + sliceW/2, sliceY + sliceH/2);
-    ctx.lineTo(cx - sliceW/2, sliceY + sliceH/2);
+    ctx.moveTo(cx - w * previousT / 2, previousY);
+    ctx.lineTo(cx + w * previousT / 2, previousY);
+    ctx.lineTo(cx + sliceW / 2, sliceY + sliceH / 2);
+    ctx.lineTo(cx - sliceW / 2, sliceY + sliceH / 2);
     ctx.fill();
 
-    // Teto
-    ctx.fillStyle = `rgb(${Math.floor(60 * light)}, ${Math.floor(25 * light)}, ${Math.floor(20 * light)})`;
+    ctx.fillStyle = `rgb(${Math.floor(44 * light)}, ${Math.floor(19 * light)}, ${Math.floor(16 * light)})`;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(cx - sliceW/2, sliceY - sliceH/2);
-    ctx.lineTo(cx + sliceW/2, sliceY - sliceH/2);
+    ctx.lineTo(cx - sliceW / 2, sliceY - sliceH / 2);
+    ctx.lineTo(cx + sliceW / 2, sliceY - sliceH / 2);
     ctx.lineTo(w, 0);
     ctx.fill();
 
-    // Paredes
-    ctx.fillStyle = `rgb(${Math.floor(120 * light)}, ${Math.floor(50 * light)}, ${Math.floor(30 * light)})`;
+    ctx.fillStyle = `rgb(${Math.floor(83 * light)}, ${Math.floor(34 * light)}, ${Math.floor(25 * light)})`;
     ctx.beginPath();
     ctx.moveTo(0, h);
-    ctx.lineTo(cx - sliceW/2, sliceY + sliceH/2);
-    ctx.lineTo(cx - sliceW/2, sliceY - sliceH/2);
+    ctx.lineTo(cx - sliceW / 2, sliceY + sliceH / 2);
+    ctx.lineTo(cx - sliceW / 2, sliceY - sliceH / 2);
     ctx.lineTo(0, 0);
     ctx.fill();
     ctx.beginPath();
     ctx.moveTo(w, h);
-    ctx.lineTo(cx + sliceW/2, sliceY + sliceH/2);
-    ctx.lineTo(cx + sliceW/2, sliceY - sliceH/2);
+    ctx.lineTo(cx + sliceW / 2, sliceY + sliceH / 2);
+    ctx.lineTo(cx + sliceW / 2, sliceY - sliceH / 2);
     ctx.lineTo(w, 0);
     ctx.fill();
   }
-
-  // --- DESENHO DO MONSTRO ---
-  const relativeDepth = monsterPos - playerPos;
-  if (relativeDepth < 300 && relativeDepth > 0) {
-    const prox = Math.max(0, 1 - (relativeDepth / 300));
-    const scale = 0.2 + Math.pow(prox, 2.5) * 8;
-    const mY = cy + (relativeDepth * 0.5);
-
-    ctx.save();
-    ctx.translate(cx, mY);
-    ctx.scale(scale, scale);
-
-    // Silhueta
-    ctx.fillStyle = 'rgba(5, 0, 0, 0.9)';
-    ctx.beginPath(); ctx.ellipse(0, 150, 60, 200, 0, 0, Math.PI*2); ctx.fill(); // Tronco
-    ctx.beginPath(); ctx.ellipse(0, -50, 50, 70, 0, 0, Math.PI*2); ctx.fill(); // Cabeça
-
-    // Braços
-    ctx.strokeStyle = 'rgba(5, 0, 0, 0.9)';
-    ctx.lineWidth = 20; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(-50, -10); ctx.quadraticCurveTo(-150, 100, -120, 350); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(50, -10); ctx.quadraticCurveTo(150, 100, 120, 350); ctx.stroke();
-
-    // Olhos
-    if (prox > 0.1) {
-      ctx.fillStyle = `rgba(255, 0, 0, ${prox})`;
-      ctx.shadowColor = 'red'; ctx.shadowBlur = 30 * prox;
-      ctx.beginPath(); ctx.arc(-25, -60, 8, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(25, -60, 8, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.restore();
-  }
 }
 
-function loop() {
-  update();
+function drawMonster(cx, cy) {
+  const relativeDepth = monsterPos - playerPos;
+  if (relativeDepth <= 0 || relativeDepth >= 360) return;
+
+  const proximity = Math.max(0, 1 - relativeDepth / 360);
+  const scale = 0.16 + Math.pow(proximity, 2.2) * 7.2;
+  const monsterY = cy + relativeDepth * 0.42;
+
+  ctx.save();
+  ctx.translate(cx, monsterY);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = 'rgba(3, 0, 0, .96)';
+  ctx.beginPath();
+  ctx.ellipse(0, 150, 60, 200, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -50, 50, 70, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(3, 0, 0, .96)';
+  ctx.lineWidth = 20;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-45, -10);
+  ctx.quadraticCurveTo(-150, 100, -120, 350);
+  ctx.moveTo(45, -10);
+  ctx.quadraticCurveTo(150, 100, 120, 350);
+  ctx.stroke();
+
+  if (proximity > 0.08) {
+    ctx.fillStyle = `rgba(255, 30, 15, ${proximity})`;
+    ctx.shadowColor = '#ff1e0f';
+    ctx.shadowBlur = 34 * proximity;
+    ctx.beginPath();
+    ctx.arc(-25, -60, 8, 0, Math.PI * 2);
+    ctx.arc(25, -60, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function draw() {
+  const lookOffset = lookUp ? h * 0.28 : lookDown ? -h * 0.28 : 0;
+  const shake = gameState === 'playing' && monsterPos - playerPos < 150
+    ? Math.sin(elapsedTime * 35) * (150 - (monsterPos - playerPos)) / 14
+    : 0;
+  const cx = w / 2 + shake;
+  const cy = h / 2 + lookOffset;
+
+  drawTunnel(cx, cy);
+  if (gameState === 'playing') drawMonster(cx, cy);
+
+  const danger = gameState === 'playing' ? Math.max(0, 1 - (monsterPos - playerPos) / 230) : 0;
+  const vignette = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.72);
+  vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vignette.addColorStop(1, `rgba(${35 + danger * 70}, 0, 0, ${0.48 + danger * 0.35})`);
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function loop(time) {
+  const delta = previousTime ? Math.min((time - previousTime) / 1000, 0.05) : 0;
+  previousTime = time;
+  update(delta);
   draw();
   requestAnimationFrame(loop);
 }
 
-loop();
+window.addEventListener('keydown', event => {
+  if (['ArrowUp', 'ArrowDown', 'Space'].includes(event.code)) event.preventDefault();
+  if (event.code === 'Escape' && gameState === 'playing') {
+    gameState = 'paused';
+    clearControls();
+    ui.classList.add('hidden');
+    screenTitle.innerHTML = 'PAUSA';
+    screenTitle.classList.remove('dead');
+    screenSubtitle.textContent = 'O silêncio não vai durar para sempre.';
+    screenStory.textContent = 'Respire. Quando estiver pronto, continue descendo.';
+    startButton.textContent = 'Continuar';
+    overlay.classList.remove('hidden');
+    return;
+  }
+  if (event.code === 'Enter' && gameState === 'menu') startGame();
+  if (event.code === 'Enter' && (gameState === 'dead' || gameState === 'win')) startGame();
+  if (event.code === 'Enter' && gameState === 'paused') resumeGame();
+  if (gameState !== 'playing') return;
+  if (event.code === 'KeyW' || event.code === 'ArrowLeft' || event.code === 'ArrowRight') moving = true;
+  if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') sprinting = true;
+  if (event.code === 'ArrowUp') lookUp = true;
+  if (event.code === 'ArrowDown') lookDown = true;
+});
+
+window.addEventListener('keyup', event => {
+  if (event.code === 'KeyW' || event.code === 'ArrowLeft' || event.code === 'ArrowRight') moving = false;
+  if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') sprinting = false;
+  if (event.code === 'ArrowUp') lookUp = false;
+  if (event.code === 'ArrowDown') lookDown = false;
+});
+
+function resumeGame() {
+  gameState = 'playing';
+  ui.classList.remove('hidden');
+  overlay.classList.add('hidden');
+}
+
+startButton.addEventListener('click', () => {
+  if (gameState === 'paused') resumeGame();
+  else startGame();
+});
+
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
