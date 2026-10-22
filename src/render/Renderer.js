@@ -19,33 +19,52 @@ export class Renderer {
     const { ctx, game } = this;
     const w = game.canvas.width;
     const h = game.canvas.height;
+    const p = game.player;
 
-    // Fundo escuro
-    ctx.fillStyle = '#050505';
-    ctx.fillRect(0, 0, w, h);
+    // Movimento de câmera (Headbob) quando está escalando
+    let camX = 0;
+    let camY = 0;
+    if (p.climbing) {
+      camX = Math.sin(game.state.time * 15) * 10;
+      camY = Math.cos(game.state.time * 30) * 5;
+    }
+
+    ctx.save();
+    ctx.translate(camX, camY);
+
+    // Fundo escuro absoluto
+    ctx.fillStyle = '#000';
+    ctx.fillRect(-20, -20, w + 40, h + 40);
 
     if (game.state.won) {
       ctx.fillStyle = '#fff';
       ctx.font = '30px monospace';
       ctx.textAlign = 'center';
       ctx.fillText('VOCÊ ESCAPOU', w / 2, h / 2);
+      ctx.restore();
       return;
     }
 
-    // Desenha os elementos na ordem correta
+    // Se o monstro pegou
+    if (game.state.dead) {
+      ctx.fillStyle = '#a00';
+      ctx.font = '40px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('ELE TE PEGOU', w / 2, h / 2);
+      ctx.restore();
+      return;
+    }
+
+    // Renderização em camadas (do fundo para a frente)
     this.wallRenderer.render();
     this.ropeRenderer.render();
-    this.torchRenderer.renderFallen();
-    this.monsterRenderer.render();
-    this.torchRenderer.renderHand();
-    
-    // Vinheta escura nas bordas
-    const grad = ctx.createRadialGradient(w/2, h/2, Math.min(w,h)*0.2, w/2, h/2, Math.max(w,h)*0.8);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.95)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
+    this.torchRenderer.renderFallen(); // Tochas no fundo
+    this.monsterRenderer.render();     // Monstro no fundo
+    this.torchRenderer.renderHand();   // Sua mão e a luz principal
 
+    ctx.restore();
+
+    // HUD não sofre headbob
     this.hudRenderer.render();
   }
 }
