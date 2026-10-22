@@ -1,72 +1,191 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CthulhuWell</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-      font-family: system-ui, -apple-system, sans-serif;
-      color: #ddd;
-      user-select: none;
-    }
-    #game {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-      cursor: crosshair;
-    }
-    #hud {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-    #hud-top, #hud-bottom {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      letter-spacing: 2px;
-      opacity: 0.75;
-    }
-    #hud-bottom {
-      justify-content: center;
-      gap: 20px;
-    }
-    .key {
-      border: 1px solid #555;
-      padding: 4px 10px;
-      border-radius: 4px;
-      background: rgba(0, 0, 0, 0.5);
-      font-size: 12px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>CthulhuWell</title>
+<style>
+  body { margin: 0; background: #000; overflow: hidden; color: #fff; font-family: monospace; }
+  canvas { display: block; }
+  #ui { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; pointer-events: none; }
+</style>
 </head>
 <body>
-  <canvas id="game"></canvas>
+<div id="ui">
+  <div id="dist">DISTÂNCIA: 1000m</div>
+  <div id="status">STATUS: SEGURO</div>
+</div>
+<canvas id="c"></canvas>
 
-  <div id="hud">
-    <div id="hud-top">
-      <span id="hud-depth">DISTÂNCIA DA PORTA: 1000m</span>
-      <span>ESPECTRO: PERSEGUINDO</span>
-      <span id="hud-look">OLHAR: FRENTE</span>
-    </div>
-    <div id="hud-bottom">
-      <span class="key">W CORRER</span>
-      <span class="key">SHIFT CORRER MAIS</span>
-      <span class="key">↑ ↓ OLHAR</span>
-    </div>
-  </div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let w, h;
 
-  <script type="module" src="./src/main.js"></script>
+function resize() {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// VARIÁVEIS DO JOGO
+let playerPos = 1000;
+let monsterPos = 1150;
+let lookUp = false, lookDown = false;
+let gameState = 'playing'; // 'playing', 'dead', 'win'
+
+// CONTROLES
+window.addEventListener('keydown', e => {
+  if (e.code === 'ArrowUp') lookUp = true;
+  if (e.code === 'ArrowDown') lookDown = true;
+  if (e.code === 'KeyW' && gameState === 'playing') {
+    const speed = e.shiftKey ? 15 : 8;
+    playerPos -= speed; // Avança em direção à porta
+    if (playerPos < 0) { playerPos = 0; gameState = 'win'; }
+  }
+});
+window.addEventListener('keyup', e => {
+  if (e.code === 'ArrowUp') lookUp = false;
+  if (e.code === 'ArrowDown') lookDown = false;
+});
+
+// LOOP PRINCIPAL
+function update() {
+  if (gameState !== 'playing') return;
+
+  // O monstro persegue sem parar
+  monsterPos -= 4; // Velocidade do monstro
+
+  // Atualiza a interface
+  document.getElementById('dist').innerText = `DISTÂNCIA DA PORTA: ${Math.floor(playerPos)}m`;
+  const distMonster = monsterPos - playerPos;
+  document.getElementById('status').innerText = distMonster < 100 ? 'STATUS: PERIGO IMINENTE' : 'STATUS: SEGURO';
+
+  if (distMonster < 10) {
+    gameState = 'dead';
+  }
+}
+
+// RENDERIZAÇÃO
+function draw() {
+  // Fundo preto absoluto
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, w, h);
+
+  if (gameState === 'dead') {
+    ctx.fillStyle = 'red';
+    ctx.font = '50px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('ELE TE PEGOU', w/2, h/2);
+    return;
+  }
+
+  if (gameState === 'win') {
+    ctx.fillStyle = 'white';
+    ctx.font = '50px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('VOCÊ SOBREVIVEU', w/2, h/2);
+    return;
+  }
+
+  let offsetY = 0;
+  if (lookUp) offsetY = h * 0.3;
+  if (lookDown) offsetY = -h * 0.3;
+
+  const cx = w / 2;
+  const cy = h / 2 + offsetY;
+
+  // --- DESENHO DO TÚNEL ---
+  const scroll = (playerPos * 40) % 100;
+  const numSlices = 15;
+
+  for (let i = numSlices; i >= 0; i--) {
+    const t = Math.pow(i / numSlices, 2.5); 
+    const sliceW = w * t;
+    const sliceH = h * t;
+    const sliceY = cy + (sliceH * 0.5) + (scroll * t);
+    const light = Math.min(1, 0.1 + t * 0.9);
+    
+    // Fundo
+    if (i === numSlices) {
+      ctx.fillStyle = '#050505'; 
+      ctx.fillRect(cx - sliceW/2, cy - sliceH/2, sliceW, sliceH);
+    }
+
+    // Chão
+    ctx.fillStyle = `rgb(${Math.floor(40 * light)}, ${Math.floor(15 * light)}, ${Math.floor(10 * light)})`;
+    ctx.beginPath();
+    ctx.moveTo(cx - (w * Math.pow((i-1)/numSlices, 2.5))/2, cy + (h * Math.pow((i-1)/numSlices, 2.5))/2 + (scroll * Math.pow((i-1)/numSlices, 2.5)));
+    ctx.lineTo(cx + (w * Math.pow((i-1)/numSlices, 2.5))/2, cy + (h * Math.pow((i-1)/numSlices, 2.5))/2 + (scroll * Math.pow((i-1)/numSlices, 2.5)));
+    ctx.lineTo(cx + sliceW/2, sliceY + sliceH/2);
+    ctx.lineTo(cx - sliceW/2, sliceY + sliceH/2);
+    ctx.fill();
+
+    // Teto
+    ctx.fillStyle = `rgb(${Math.floor(60 * light)}, ${Math.floor(25 * light)}, ${Math.floor(20 * light)})`;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(cx - sliceW/2, sliceY - sliceH/2);
+    ctx.lineTo(cx + sliceW/2, sliceY - sliceH/2);
+    ctx.lineTo(w, 0);
+    ctx.fill();
+
+    // Paredes
+    ctx.fillStyle = `rgb(${Math.floor(120 * light)}, ${Math.floor(50 * light)}, ${Math.floor(30 * light)})`;
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    ctx.lineTo(cx - sliceW/2, sliceY + sliceH/2);
+    ctx.lineTo(cx - sliceW/2, sliceY - sliceH/2);
+    ctx.lineTo(0, 0);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(w, h);
+    ctx.lineTo(cx + sliceW/2, sliceY + sliceH/2);
+    ctx.lineTo(cx + sliceW/2, sliceY - sliceH/2);
+    ctx.lineTo(w, 0);
+    ctx.fill();
+  }
+
+  // --- DESENHO DO MONSTRO ---
+  const relativeDepth = monsterPos - playerPos;
+  if (relativeDepth < 300 && relativeDepth > 0) {
+    const prox = Math.max(0, 1 - (relativeDepth / 300));
+    const scale = 0.2 + Math.pow(prox, 2.5) * 8;
+    const mY = cy + (relativeDepth * 0.5);
+
+    ctx.save();
+    ctx.translate(cx, mY);
+    ctx.scale(scale, scale);
+
+    // Silhueta
+    ctx.fillStyle = 'rgba(5, 0, 0, 0.9)';
+    ctx.beginPath(); ctx.ellipse(0, 150, 60, 200, 0, 0, Math.PI*2); ctx.fill(); // Tronco
+    ctx.beginPath(); ctx.ellipse(0, -50, 50, 70, 0, 0, Math.PI*2); ctx.fill(); // Cabeça
+
+    // Braços
+    ctx.strokeStyle = 'rgba(5, 0, 0, 0.9)';
+    ctx.lineWidth = 20; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-50, -10); ctx.quadraticCurveTo(-150, 100, -120, 350); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(50, -10); ctx.quadraticCurveTo(150, 100, 120, 350); ctx.stroke();
+
+    // Olhos
+    if (prox > 0.1) {
+      ctx.fillStyle = `rgba(255, 0, 0, ${prox})`;
+      ctx.shadowColor = 'red'; ctx.shadowBlur = 30 * prox;
+      ctx.beginPath(); ctx.arc(-25, -60, 8, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(25, -60, 8, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
 </body>
 </html>
