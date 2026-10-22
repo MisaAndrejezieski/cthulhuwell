@@ -1,3 +1,7 @@
+// ============================================================
+// CthulhuWell — ClimbSystem (Corrida)
+// ============================================================
+
 import { PLAYER_SPEED, PLAYER_WALK_SPEED } from '../config/constants.js';
 
 export class ClimbSystem {
@@ -10,25 +14,27 @@ export class ClimbSystem {
     const { input, player } = this.game;
     if (!player) return;
 
-    // Correndo para frente (W ou Seta pra Cima) e com os pés no chão
+    // Correr para frente: W, Seta pra Cima ou clique do mouse
     const isRunning = input.isDown('KeyW') || input.isDown('ArrowUp');
     
     if (isRunning) {
-      // Se estiver com Shift, corre mais rápido
-      const speed = input.isDown('ShiftLeft') ? PLAYER_SPEED : PLAYER_WALK_SPEED;
+      // Shift para correr mais rápido
+      const speed = (input.isDown('ShiftLeft') || input.isDown('ShiftRight')) 
+                    ? PLAYER_SPEED 
+                    : PLAYER_WALK_SPEED;
       
-      // Diminui a posição em direção à porta (0)
+      // Avança em direção à porta
       player.depth = Math.max(0, player.depth - speed * dt);
       
-      // Headbob para dar sensação de corrida
+      // Headbob (balanço da câmera simulando os passos)
       this.bobTimer += dt * speed * 2;
-      player.bobbing = Math.sin(this.bobTimer) * 10;
+      player.bobbing = Math.sin(this.bobTimer) * 12;
     } else {
-      player.bobbing = 0;
+      player.bobbing = 0; // Fica parado e o monstro te alcança
     }
 
     // Chegou na porta? Venceu!
-    if (player.depth <= 0 && this.game.state.running) {
+    if (player.hasEscaped() && this.game.state.running) {
       this.game.win?.();
     }
   }
