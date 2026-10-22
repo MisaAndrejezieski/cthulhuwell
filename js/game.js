@@ -17,8 +17,8 @@ const SETTINGS = {
   totalDistance: 1000,
   playerSpeed: 3.5,
   sprintSpeed: 7,
-  monsterBaseSpeed: 2.8,
-  fov: 100, // Campo de visão
+  monsterBaseSpeed: 3.0, // Aumentei um pouco a velocidade base
+  fov: 100,
   renderDist: 150
 };
 
@@ -28,8 +28,11 @@ const game = {
   lookingBack: false,
   time: 0,
   lastTime: 0,
-  flickerTimer: 0,
-  flickerState: 1,
+  
+  // Variáveis do Jumpscare
+  jumpscareActive: false,
+  jumpscareTimer: 0,
+  screenShake: 0,
   
   player: { distance: 0, stamina: 100, bob: 0, speed: 0 },
   monster: { distance: -20, speed: 0 },
@@ -39,7 +42,7 @@ const game = {
 };
 
 // ==========================================
-// ÁUDIO
+// ÁUDIO (Batimento e Jumpscare)
 // ==========================================
 function initAudio() {
   if (!game.audioCtx) game.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -58,6 +61,27 @@ function playHeartbeat(volume) {
   gain.connect(game.audioCtx.destination);
   osc.start();
   osc.stop(game.audioCtx.currentTime + 0.2);
+}
+
+function playJumpscareSound() {
+  if (!game.audioCtx) return;
+  
+  // Cria um som de "grito" distorcido usando ruído e osciladores
+  const osc = game.audioCtx.createOscillator();
+  const gain = game.audioCtx.createGain();
+  
+  osc.type = 'sawtooth'; // Som agressivo
+  osc.frequency.setValueAtTime(800, game.audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(50, game.audioCtx.currentTime + 0.8); // Cai drasticamente
+  
+  gain.gain.setValueAtTime(1.0, game.audioCtx.currentTime); // Volume máximo
+  gain.gain.exponentialRampToValueAtTime(0.01, game.audioCtx.currentTime + 1.0);
+  
+  osc.connect(gain);
+  gain.connect(game.audioCtx.destination);
+  
+  osc.start();
+  osc.stop(game.audioCtx.currentTime + 1.0);
 }
 
 // ==========================================
@@ -114,6 +138,7 @@ function startGame() {
   game.paused = false;
   game.time = 0;
   game.lastTime = performance.now();
+  game.jumpscareActive = false;
   
   game.player.distance = 0;
   game.player.stamina = 100;
@@ -124,6 +149,17 @@ function startGame() {
 }
 
 function update(dt) {
+  if (game.jumpscareActive) {
+    // Se o jumpscare está rodando, só atualiza o timer e o tremor
+    game.jumpscareTimer -= dt;
+    game.screenShake = Math.max(0, game.jumpscareTimer * 30);
+    
+    if (game.jumpscareTimer <= 0) {
+      endGame(false); // Fim de jogo após o susto
+    }
+    return; // Pausa a lógica normal do jogo
+  }
+
   game.time += dt;
   
   let targetSpeed = 0;
@@ -155,8 +191,16 @@ function update(dt) {
     game.monster.speed = 0;
   }
   
-  if (game.player.distance >= SETTINGS.totalDistance) endGame(true);
-  else if (game.monster.distance >= game.player.distance) endGame(false);
+  // Verifica se o monstro alcançou
+  if (game.monster.distance >= game.player.distance) {
+    triggerJumpscare();
+    return;
+  }
+  
+  if (game.player.distance >= SETTINGS.totalDistance) {
+    endGame(true);
+    return;
+  }
   
   const distToMonster = game.player.distance - game.monster.distance;
   if (distToMonster < 25) {
@@ -169,6 +213,13 @@ function update(dt) {
   }
   
   updateUI();
+}
+
+function triggerJumpscare() {
+  game.jumpscareActive = true;
+  game.jumpscareTimer = 1.5; // Duração do susto em segundos
+  playJumpscareSound();
+  ui.classList.add('hidden'); // Esconde o HUD
 }
 
 function updateUI() {
@@ -193,53 +244,129 @@ function updateUI() {
 }
 
 // ==========================================
-// RENDERIZAÇÃO (Estilo Foto/Realista)
+// RENDERIZAÇÃO
 // ==========================================
 function draw() {
   const w = canvas.width;
   const h = canvas.height;
   
-  // Fundo totalmente preto
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, w, h);
-  
-  // Câmera (Head Bob suave)
-  const bobX = Math.cos(game.player.bob * 0.5) * 4;
-  const bobY = Math.sin(game.player.bob) * 6;
+  // Tremor de tela (Screen Shake)
+  let shakeX = 0;
+  let shakeY = 0;
+  if (game.screenShake > 0) {
+    shakeX = (Math.random() - 0.5) * game.screenShake;
+    shakeY = (Math.random() - 0.5) * game.screenShake;
+  }
   
   ctx.save();
-  ctx.translate(w / 2 + bobX, h / 2 + bobY);
+  ctx.translate(shakeX, shakeY);
   
-  const fov = SETTINGS.fov * (Math.PI / 180);
-  const focalLength = (w / 2) / Math.tan(fov / 2);
-  
-  if (game.lookingBack) {
-    drawMonster(w, h, focalLength);
+  if (game.jumpscareActive) {
+    drawJumpscare(w, h);
   } else {
-    drawCorridorAndDoor(w, h, focalLength);
+    // Fundo normal
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    
+    const bobX = Math.cos(game.player.bob * 0.5) * 4;
+    const bobY = Math.sin(game.player.bob) * 6;
+    
+    ctx.save();
+    ctx.translate(w / 2 + bobX, h / 2 + bobY);
+    
+    const fov = SETTINGS.fov * (Math.PI / 180);
+    const focalLength = (w / 2) / Math.tan(fov / 2);
+    
+    if (game.lookingBack) {
+      drawMonster(w, h, focalLength);
+    } else {
+      drawCorridorAndDoor(w, h, focalLength);
+    }
+    
+    ctx.restore();
+    
+    drawVignette(w, h);
+    drawGrain(w, h);
   }
   
   ctx.restore();
-  
-  drawVignette(w, h);
-  drawGrain(w, h);
 }
 
-function drawCorridorAndDoor(w, h, focalLength) {
-  // Desenha o corredor usando perspectiva de ponto de fuga
-  const corridorW = 200; // Largura física do corredor
+// ==========================================
+// DESENHO DO JUMPSCARE (A Cara do Monstro)
+// ==========================================
+function drawJumpscare(w, h) {
+  // Fundo preto
+  ctx.fillStyle = '#000';
+  ctx.fillRect(-100, -100, w + 200, h + 200);
   
-  // Função auxiliar para projetar um ponto no mundo para a tela
+  // Zoom rápido para a cara (Efeito de avanço)
+  const zoom = 1 + (1.5 - game.jumpscareTimer) * 2; 
+  
+  ctx.translate(w / 2, h / 2);
+  ctx.scale(zoom, zoom);
+  
+  // Rosto base
+  ctx.fillStyle = '#0a0a0a';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, w * 0.3, h * 0.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Silhueta do Corpo (como na sua foto)
+  ctx.fillStyle = '#050505';
+  ctx.beginPath();
+  ctx.ellipse(0, h * 0.5, w * 0.4, h * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Olhos brancos e vazios
+  ctx.fillStyle = '#e0e0e0';
+  ctx.beginPath();
+  ctx.ellipse(-w * 0.1, -h * 0.1, w * 0.06, h * 0.04, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(w * 0.1, -h * 0.1, w * 0.06, h * 0.04, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Pupilas minúsculas
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(-w * 0.1, -h * 0.1, w * 0.01, 0, Math.PI * 2);
+  ctx.arc(w * 0.1, -h * 0.1, w * 0.01, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Boca rasgada e dentes
+  ctx.fillStyle = '#050505';
+  ctx.beginPath();
+  ctx.ellipse(0, h * 0.15, w * 0.15, h * 0.15, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#d0d0d0'; // Dentes amarelados
+  for (let i = -3; i <= 3; i++) {
+    if (i === 0) continue; // Falha no meio
+    ctx.beginPath();
+    ctx.moveTo(i * w * 0.03, h * 0.05);
+    ctx.lineTo(i * w * 0.03 - w * 0.015, h * 0.1);
+    ctx.lineTo(i * w * 0.03 + w * 0.015, h * 0.1);
+    ctx.fill();
+  }
+  
+  // Adiciona um filtro de ruído estático em cima do rosto
+  drawGrain(w, h, 0.2);
+}
+
+// ==========================================
+// FUNÇÕES AUXILIARES DE RENDERIZAÇÃO
+// ==========================================
+function drawCorridorAndDoor(w, h, focalLength) {
+  const corridorW = 200;
+  
   function project(worldX, worldY, worldZ) {
     const scale = focalLength / worldZ;
     return { x: worldX * scale, y: worldY * scale, scale: scale };
   }
   
   const maxZ = SETTINGS.renderDist;
-  const minZ = 2; // Perto da câmera
+  const minZ = 2;
   
-  // Desenha o Chão e Teto como polígonos
-  // Chão (do fundo até a câmera)
+  // Chão
   const pBottomLeftFar = project(-corridorW/2, corridorW/2, maxZ);
   const pBottomRightFar = project(corridorW/2, corridorW/2, maxZ);
   const pBottomLeftNear = project(-corridorW/2, corridorW/2, minZ);
@@ -267,8 +394,7 @@ function drawCorridorAndDoor(w, h, focalLength) {
   ctx.lineTo(pTopLeftFar.x, pTopLeftFar.y);
   ctx.fill();
 
-  // Paredes Laterais
-  // Parede Esquerda
+  // Paredes
   ctx.fillStyle = '#111';
   ctx.beginPath();
   ctx.moveTo(pTopLeftNear.x, pTopLeftNear.y);
@@ -277,7 +403,6 @@ function drawCorridorAndDoor(w, h, focalLength) {
   ctx.lineTo(pTopLeftFar.x, pTopLeftFar.y);
   ctx.fill();
 
-  // Parede Direita
   ctx.fillStyle = '#111';
   ctx.beginPath();
   ctx.moveTo(pTopRightNear.x, pTopRightNear.y);
@@ -286,11 +411,10 @@ function drawCorridorAndDoor(w, h, focalLength) {
   ctx.lineTo(pTopRightFar.x, pTopRightFar.y);
   ctx.fill();
   
-  // Desenha as "Portas" nas laterais (Textura de corredor)
-  ctx.strokeStyle = '#222';
+  // Detalhes das portas laterais
+  ctx.strokeStyle = '#1a1a1a';
   ctx.lineWidth = 2;
   for (let z = 10; z < maxZ; z += 15) {
-    // Lado Esquerdo
     let p1 = project(-corridorW/2, -corridorW/2 + 10, z);
     let p2 = project(-corridorW/2, corridorW/2 - 10, z);
     ctx.beginPath();
@@ -298,7 +422,6 @@ function drawCorridorAndDoor(w, h, focalLength) {
     ctx.lineTo(p2.x, p2.y);
     ctx.stroke();
 
-    // Lado Direito
     p1 = project(corridorW/2, -corridorW/2 + 10, z);
     p2 = project(corridorW/2, corridorW/2 - 10, z);
     ctx.beginPath();
@@ -307,12 +430,11 @@ function drawCorridorAndDoor(w, h, focalLength) {
     ctx.stroke();
   }
   
-  // Luzes no Teto (como na foto)
+  // Luzes no Teto
   for (let z = 5; z < maxZ; z += 20) {
     const p = project(0, -corridorW/2 + 5, z);
-    const lightRadius = Math.max(1, 20 * p.scale); // Fica menor ao longe
+    const lightRadius = Math.max(1, 20 * p.scale);
     
-    // Glow da luz
     const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, lightRadius * 4);
     grad.addColorStop(0, 'rgba(200, 210, 220, 0.8)');
     grad.addColorStop(0.2, 'rgba(200, 210, 220, 0.4)');
@@ -322,29 +444,26 @@ function drawCorridorAndDoor(w, h, focalLength) {
     ctx.arc(p.x, p.y, lightRadius * 4, 0, Math.PI * 2);
     ctx.fill();
     
-    // Núcleo da luz
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.arc(p.x, p.y, lightRadius, 0, Math.PI * 2);
     ctx.fill();
   }
   
-  // A Porta no Final
+  // A Porta
   const doorZ = SETTINGS.totalDistance - game.player.distance;
   if (doorZ > 0 && doorZ < maxZ + 10) {
     const pDoor = project(0, 0, doorZ);
-    const doorScale = Math.min(1, 20 / doorZ); // Ajuste de tamanho
+    const doorScale = Math.min(1, 20 / doorZ);
     const dw = 80 * doorScale;
     const dh = 150 * doorScale;
     
-    // Luz vazando por baixo da porta
     const glow = ctx.createRadialGradient(pDoor.x, pDoor.y + dh/2, 0, pDoor.x, pDoor.y + dh/2, dw*2);
     glow.addColorStop(0, 'rgba(167, 139, 118, 0.6)');
     glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = glow;
     ctx.fillRect(pDoor.x - dw*2, pDoor.y - dh/2, dw*4, dh*2);
     
-    // Porta
     ctx.fillStyle = '#050505';
     ctx.fillRect(pDoor.x - dw/2, pDoor.y - dh/2, dw, dh);
     ctx.strokeStyle = '#333';
@@ -360,24 +479,28 @@ function drawMonster(w, h, focalLength) {
   const scale = focalLength / dist;
   const size = 100 * scale;
   
-  // Monstro aparece no centro
+  // Silhueta (como na foto)
   ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse(0, 0, size * 0.4, size * 0.8, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, size * 0.3, size * 0.7, 0, 0, Math.PI * 2);
   ctx.fill();
   
-  // Olhos
-  if (dist < 20) {
-    ctx.fillStyle = '#ff0000';
+  // Cabeça
+  ctx.beginPath();
+  ctx.arc(0, -size * 0.5, size * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Olhos vermelhos se estiver muito perto
+  if (dist < 15) {
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
     ctx.beginPath();
-    ctx.arc(-size * 0.1, -size * 0.4, size * 0.05, 0, Math.PI * 2);
-    ctx.arc(size * 0.1, -size * 0.4, size * 0.05, 0, Math.PI * 2);
+    ctx.arc(-size * 0.08, -size * 0.55, size * 0.03, 0, Math.PI * 2);
+    ctx.arc(size * 0.08, -size * 0.55, size * 0.03, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
 function drawVignette(w, h) {
-  // Escurecimento nas bordas (Essencial para o terror)
   const grad = ctx.createRadialGradient(w/2, h/2, h*0.2, w/2, h/2, h*0.9);
   grad.addColorStop(0, 'rgba(0,0,0,0)');
   grad.addColorStop(0.5, 'rgba(0,0,0,0.6)');
@@ -386,9 +509,8 @@ function drawVignette(w, h) {
   ctx.fillRect(0, 0, w, h);
 }
 
-function drawGrain(w, h) {
-  // Efeito de granulado (Ruído) para dar realismo de câmera
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+function drawGrain(w, h, intensity = 0.03) {
+  ctx.fillStyle = `rgba(255, 255, 255, ${intensity})`;
   for (let i = 0; i < 1000; i++) {
     const x = Math.random() * w;
     const y = Math.random() * h;
@@ -407,12 +529,13 @@ function loop(timestamp) {
   update(dt);
   draw();
   
-  requestAnimationFrame(loop);
+  if (game.active) requestAnimationFrame(loop);
 }
 
 function endGame(win) {
   game.active = false;
   overlay.classList.remove('hidden');
+  
   if (win) {
     screenTitle.innerText = "VOCÊ ESCAPOU";
     screenTitle.classList.remove('dead');
@@ -420,6 +543,7 @@ function endGame(win) {
     screenStory.innerText = "O silêncio retorna. Mas você ainda sente que algo te observa.";
     startBtn.innerText = "Tentar Novamente";
   } else {
+    // Se perdeu, mostra a tela de morte (o Jumpscare já sumiu)
     screenTitle.innerText = "VOCÊ FOI PEGO";
     screenTitle.classList.add('dead');
     screenSubtitle.innerText = "A escuridão te envolveu.";
